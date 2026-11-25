@@ -74,15 +74,16 @@
     const { useState, useEffect, useMemo, useRef } = React;
 
     // =========================================================================
-    // 1. TEMPELKAN FIREBASE CONFIG KAMU DI SINI (Ganti nilai di dalam tanda kutip)
+    // 1. KONFIGURASI FIREBASE PROYEK KAMU
     // =========================================================================
     const DEFAULT_FIREBASE_CONFIG = {
-      apiKey: "GANTI_DENGAN_API_KEY_KAMU",
-      authDomain: "GANTI_DENGAN_AUTH_DOMAIN_KAMU",
-      projectId: "GANTI_DENGAN_PROJECT_ID_KAMU",
-      storageBucket: "GANTI_DENGAN_STORAGE_BUCKET_KAMU",
-      messagingSenderId: "GANTI_DENGAN_MESSAGING_SENDER_ID_KAMU",
-      appId: "GANTI_DENGAN_APP_ID_KAMU"
+      apiKey: "AIzaSyAgknHBNcXwSkZws8fzScE_Y0uGmeldNBc",
+      authDomain: "wh-by-markyours-here-3f0cd.firebaseapp.com",
+      projectId: "wh-by-markyours-here-3f0cd",
+      storageBucket: "wh-by-markyours-here-3f0cd.firebasestorage.app",
+      messagingSenderId: "1092435863323",
+      appId: "1:1092435863323:web:21f0328cc1f7ede364d5be",
+      measurementId: "G-ES2JQ53Y9H"
     };
 
     const ADMIN_EMAIL = "markyours.here@gmail.com";
@@ -624,7 +625,7 @@
       const [loaded, setLoaded] = useState(false);
 
       const firestoreRef = useRef(null);
-      const [cloudStatus, setCloudStatus] = useState("offline"); // offline | connecting | connected | error
+      const [cloudStatus, setCloudStatus] = useState("offline");
       const [cloudErrorDetail, setCloudErrorDetail] = useState("");
 
       const [db, setDb] = useState(() => {
@@ -647,7 +648,6 @@
       const [route, setRoute] = useState(null);
       const [activeTab, setActiveTab] = useState("form");
 
-      // Form states
       const [formData, setFormData] = useState({
         customerName: "",
         phone: "",
@@ -677,7 +677,6 @@
       const [formToast, setFormToast] = useState("");
       const [formError, setFormError] = useState("");
 
-      // Susul resi / ganti resi / retur modals
       const [resiDrafts, setResiDrafts] = useState({});
       const [changeResiModal, setChangeResiModal] = useState(null);
       const [newResiInput, setNewResiInput] = useState("");
@@ -686,7 +685,6 @@
       const [returNewResi, setReturNewResi] = useState("");
       const [returReason, setReturReason] = useState("");
 
-      // Rekap & Billing filters
       const [searchResi, setSearchResi] = useState("");
       const [filterCategory, setFilterCategory] = useState("all");
       const [filterStatus, setFilterStatus] = useState("all");
@@ -698,7 +696,6 @@
       const [billingGroupByCustomer, setBillingGroupByCustomer] = useState(true);
       const [copiedKey, setCopiedKey] = useState("");
 
-      // Sync / Backup modal
       const [showSyncModal, setShowSyncModal] = useState(false);
       const [fbConfigText, setFbConfigText] = useState(() => localStorage.getItem(FB_CONFIG_KEY) || "");
       const [syncStatusMsg, setSyncStatusMsg] = useState("");
@@ -708,7 +705,6 @@
         return I18N[lang] || I18N.id;
       }, [session, lang]);
 
-      // Connect to Firebase Firestore (Realtime sync)
       useEffect(() => {
         const fs = initFirestore();
         if (!fs) {
@@ -733,7 +729,6 @@
                 customers: Array.isArray(data.customers) ? data.customers : prev.customers,
               }));
             } else {
-              // Seed initial meta if empty
               const init = createInitialData();
               metaDoc.set({
                 tripConfig: init.tripConfig,
@@ -1244,7 +1239,6 @@
         setSyncStatusMsg(`Berhasil mengirim ${db.submissions.length} data lokal ke Firebase Firestore!`);
       }
 
-      // Filtered & sorted submissions
       const visibleSubmissions = useMemo(() => {
         if (!route || route === "usa-cargo" || !session) return [];
         let list = db.submissions.filter((s) => s.route === route);
@@ -1409,7 +1403,6 @@
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-melon-500">{t.brand}</h1>
               <p className="text-sm font-medium text-rind-500 mb-3">{t.tagline} ✨🌊</p>
 
-              {/* Indikator Koneksi Firebase */}
               <div className="mb-3 flex items-center gap-1.5 text-[11px]">
                 <span
                   className={`inline-block w-2 h-2 rounded-full ${
@@ -1623,7 +1616,6 @@
 
       return (
         <div className="min-h-screen pb-14">
-          {/* Top Bar */}
           <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b-2 border-melon-100 px-4 py-3">
             <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -1693,7 +1685,6 @@
             </div>
           </header>
 
-          {/* Navigation Tabs */}
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <div className="flex flex-wrap gap-2">
               {[
@@ -1720,7 +1711,6 @@
           </div>
 
           <main className="max-w-7xl mx-auto px-4 pt-5">
-            {/* TAB 1: FORM */}
             {activeTab === "form" && (
               <form onSubmit={handleFormSubmit} className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-6">
                 <div className="flex items-center justify-between border-b border-melon-100 pb-3">
@@ -1834,7 +1824,6 @@
                   )}
                 </div>
 
-                {/* Items */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-display text-lg font-bold text-gray-800">{t.itemsTitle}</h3>
@@ -2036,7 +2025,6 @@
               </form>
             )}
 
-            {/* TAB 2: ISI RESI BARANG */}
             {activeTab === "resi" && (
               <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4">
                 <h2 className="font-display text-xl font-bold text-melon-500">{t.noResiYetTitle}</h2>
@@ -2077,7 +2065,6 @@
               </div>
             )}
 
-            {/* TAB 3: REKAPAN & TRACKING */}
             {activeTab === "rekap" && (
               <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-4 sm:p-6 shadow-lg space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2093,7 +2080,6 @@
                   )}
                 </div>
 
-                {/* Filter & Sort Controls */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 bg-melon-50/70 p-3.5 rounded-2xl border border-melon-100">
                   <input
                     type="text"
@@ -2177,7 +2163,6 @@
                   )}
                 </div>
 
-                {/* Spreadsheet Table */}
                 <div className="overflow-x-auto sheet-scroll border border-melon-200 rounded-2xl">
                   <table className="min-w-full text-xs border-collapse">
                     <thead>
@@ -2453,7 +2438,6 @@
               </div>
             )}
 
-            {/* TAB 4: SHEET TAGIHAN */}
             {activeTab === "billing" && (
               <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-4 sm:p-6 shadow-lg space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2670,7 +2654,6 @@
               </div>
             )}
 
-            {/* TAB 5: PENGATURAN KLOTER (ADMIN ONLY) */}
             {activeTab === "trip" && session.role === "admin" && (
               <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4 max-w-xl">
                 <h2 className="font-display text-xl font-bold text-melon-500">{t.navTrip} ({routeTitle})</h2>
@@ -2746,7 +2729,6 @@
             )}
           </main>
 
-          {/* Modal Ganti Resi */}
           {changeResiModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-2 border-melon-200 space-y-4">
@@ -2786,7 +2768,6 @@
             </div>
           )}
 
-          {/* Modal Retur */}
           {returModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-2 border-melon-200 space-y-4">
@@ -2846,7 +2827,6 @@
             </div>
           )}
 
-          {/* Modal Sync & Backup */}
           {showSyncModal && session.role === "admin" && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-6 max-w-md w-full border-2 border-melon-200 space-y-4">
