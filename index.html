@@ -234,6 +234,8 @@
         copied: "Tersalin!",
         activityTitle: "Riwayat Log Aktivitas",
         viewAllLogs: "Lihat Semua Log",
+        savePhotosBtn: "Simpan Foto",
+        photosSavedToast: "Foto tersimpan!",
       },
       en: {
         brand: "WH By Markyours_here",
@@ -342,6 +344,8 @@
         copied: "Copied!",
         activityTitle: "Activity Log History",
         viewAllLogs: "View All Logs",
+        savePhotosBtn: "Save Photos",
+        photosSavedToast: "Photos saved!",
       },
       zh: {
         brand: "WH By Markyours_here",
@@ -450,6 +454,8 @@
         copied: "已复制！",
         activityTitle: "操作日志记录",
         viewAllLogs: "查看全部日志",
+        savePhotosBtn: "保存照片",
+        photosSavedToast: "照片已保存！",
       }
     };
 
@@ -488,7 +494,7 @@
           hour: "2-digit",
           minute: "2-digit",
         }),
-        action, // "INPUT" | "UBAH" | "RESI" | "RETUR" | "HAPUS"
+        action,
         actor,
         role,
         targetId,
@@ -757,7 +763,6 @@
       const [loginError, setLoginError] = useState("");
       const [issuedCodeBanner, setIssuedCodeBanner] = useState("");
 
-      // Public tracking mode without login (?track=... or ?code=... or button)
       const [publicTrackOpen, setPublicTrackOpen] = useState(() => {
         try {
           const params = new URLSearchParams(window.location.search);
@@ -778,6 +783,10 @@
       const [lang, setLang] = useState("id");
       const [route, setRoute] = useState(null);
       const [activeTab, setActiveTab] = useState("form");
+
+      // Draft foto per submission & tahap sebelum diklik "Simpan Foto"
+      const [pendingStagePhotos, setPendingStagePhotos] = useState({});
+      const [savedPhotoNoticeSubId, setSavedPhotoNoticeSubId] = useState("");
 
       const [formData, setFormData] = useState({
         customerName: "",
@@ -1361,26 +1370,72 @@
         }
       }
 
-      async function handleAdminStagePhotoUpload(subId, stageKey, filesList) {
+      async function handleStagePhotoDraftSelect(subId, stageKey, filesList) {
         const files = Array.from(filesList || []);
+        if (files.length === 0) return;
         const targetSub = db.submissions.find((s) => s.id === subId);
-        const current = targetSub?.photos?.[stageKey] || [];
-        const slots = Math.max(0, 5 - current.length);
+        const existingSaved = targetSub?.photos?.[stageKey] || [];
+        const existingDraft = pendingStagePhotos[subId]?.[stageKey] || [];
+        const slots = Math.max(0, 5 - existingSaved.length - existingDraft.length);
         const compressed = [];
         for (const f of files.slice(0, slots)) {
           compressed.push(await compressImageFile(f));
         }
+        if (compressed.length === 0) return;
+        setPendingStagePhotos((prev) => ({
+          ...prev,
+          [subId]: {
+            ...(prev[subId] || {}),
+            [stageKey]: [...existingDraft, ...compressed],
+          },
+        }));
+      }
+
+      function handleCancelPendingPhotos(subId) {
+        setPendingStagePhotos((prev) => {
+          const next = { ...prev };
+          delete next[subId];
+          return next;
+        });
+      }
+
+      function handleSavePendingPhotos(subId) {
+        const subDraft = pendingStagePhotos[subId];
+        if (!subDraft) return;
+        const stageLabels = {
+          arrival: "Foto Datang",
+          scale: "Foto Timbangan",
+          indoItem: "Barang di Indo",
+          indoPack: "Packing di Indo",
+          koperPack: "Foto Packing Koper",
+        };
+        const addedSummary = [];
+
         updateSubmission(
           subId,
-          (prev) => ({
-            photos: {
-              ...prev.photos,
-              [stageKey]: [...(prev.photos?.[stageKey] || []), ...compressed],
-            },
-          }),
+          (prev) => {
+            const nextPhotos = { ...(prev.photos || {}) };
+            Object.entries(subDraft).forEach(([stKey, list]) => {
+              if (Array.isArray(list) && list.length > 0) {
+                nextPhotos[stKey] = [...(nextPhotos[stKey] || []), ...list];
+                addedSummary.push(`${stageLabels[stKey] || stKey} (+${list.length})`);
+              }
+            });
+            return { photos: nextPhotos };
+          },
           "UBAH",
-          `Upload ${compressed.length} foto tahap (${stageKey})`
+          addedSummary.length > 0 ? `Simpan foto: ${addedSummary.join(", ")}` : "Simpan foto"
         );
+
+        setPendingStagePhotos((prev) => {
+          const next = { ...prev };
+          delete next[subId];
+          return next;
+        });
+        setSavedPhotoNoticeSubId(subId);
+        setTimeout(() => {
+          setSavedPhotoNoticeSubId((cur) => (cur === subId ? "" : cur));
+        }, 2200);
       }
 
       function handleSaveMissingResi(subId) {
@@ -2668,6 +2723,11 @@
                         const custCanDelete = canCustomerDeleteSubmission(sub);
                         const shareUrl = `${window.location.origin}${window.location.pathname}?track=${encodeURIComponent(sub.id)}`;
                         const logs = sub.activityLogs || [];
+                        const subPending = pendingStagePhotos[sub.id] || {};
+                        const pendingCount = Object.values(subPending).reduce(
+                          (acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0),
+                          0
+                        );
 
                         return (
                           <tr key={sub.id} className="odd:bg-white even:bg-melon-50/30 align-top">
@@ -2817,7 +2877,7 @@
                               </div>
                             </td>
 
-                            <td className="p-2.5 border border-melon-100 min-w-[200px]">
+                            <td className="p-2.5 border border-melon-100 min-w-[210px]">
                               {sub.shortageNote && (
                                 <div className="mb-1.5 px-2 py-1 rounded-lg bg-sun-100 border border-sun-300 text-[10px] font-bold text-amber-950">
                                   ⚠️ Ada Catatan/Komplain: {sub.shortageNote}
@@ -2834,61 +2894,119 @@
                               )}
 
                               {route === "china-indo" ? (
-                                <div className="space-y-1">
+                                <div className="space-y-1.5">
                                   {[
                                     { key: "arrival", label: "Foto Datang" },
                                     ...(session.role === "admin" ? [{ key: "scale", label: "Foto Timbangan" }] : []),
                                     { key: "indoItem", label: "Barang di Indo" },
                                     { key: "indoPack", label: "Packing di Indo" },
-                                  ].map((st) => (
-                                    <div key={st.key}>
-                                      <div className="text-[10px] font-semibold text-gray-600">
-                                        {st.label} ({(sub.photos?.[st.key] || []).length})
+                                  ].map((st) => {
+                                    const draftList = subPending[st.key] || [];
+                                    return (
+                                      <div key={st.key}>
+                                        <div className="text-[10px] font-semibold text-gray-600">
+                                          {st.label} ({(sub.photos?.[st.key] || []).length} tersimpan{draftList.length > 0 ? `, +${draftList.length} draft` : ""})
+                                        </div>
+                                        {session.role === "admin" && (
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={(e) => {
+                                              handleStagePhotoDraftSelect(sub.id, st.key, e.target.files);
+                                              e.target.value = "";
+                                            }}
+                                            className="text-[10px] w-full"
+                                          />
+                                        )}
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {(sub.photos?.[st.key] || []).map((src, i) => (
+                                            <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border border-rind-400" />
+                                          ))}
+                                          {draftList.map((src, i) => (
+                                            <img
+                                              key={`draft-${i}`}
+                                              src={src}
+                                              alt={`draft-${st.label}`}
+                                              className="w-8 h-8 object-cover rounded border-2 border-amber-400 opacity-85"
+                                            />
+                                          ))}
+                                        </div>
                                       </div>
-                                      {session.role === "admin" && (
-                                        <input
-                                          type="file"
-                                          accept="image/*"
-                                          multiple
-                                          onChange={(e) => handleAdminStagePhotoUpload(sub.id, st.key, e.target.files)}
-                                          className="text-[10px] w-full"
-                                        />
-                                      )}
-                                      <div className="flex gap-1 mt-0.5">
-                                        {(sub.photos?.[st.key] || []).map((src, i) => (
-                                          <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border" />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
-                                <div className="space-y-1">
+                                <div className="space-y-1.5">
                                   {[
                                     { key: "arrival", label: "Foto Datang" },
                                     { key: "scale", label: "Foto Timbangan" },
                                     ...(session.role === "admin" ? [{ key: "koperPack", label: "Foto Packing Koper" }] : []),
-                                  ].map((st) => (
-                                    <div key={st.key}>
-                                      <div className="text-[10px] font-semibold text-gray-600">
-                                        {st.label} ({(sub.photos?.[st.key] || []).length})
+                                  ].map((st) => {
+                                    const draftList = subPending[st.key] || [];
+                                    return (
+                                      <div key={st.key}>
+                                        <div className="text-[10px] font-semibold text-gray-600">
+                                          {st.label} ({(sub.photos?.[st.key] || []).length} tersimpan{draftList.length > 0 ? `, +${draftList.length} draft` : ""})
+                                        </div>
+                                        {session.role === "admin" && (
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={(e) => {
+                                              handleStagePhotoDraftSelect(sub.id, st.key, e.target.files);
+                                              e.target.value = "";
+                                            }}
+                                            className="text-[10px] w-full"
+                                          />
+                                        )}
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {(sub.photos?.[st.key] || []).map((src, i) => (
+                                            <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border border-rind-400" />
+                                          ))}
+                                          {draftList.map((src, i) => (
+                                            <img
+                                              key={`draft-${i}`}
+                                              src={src}
+                                              alt={`draft-${st.label}`}
+                                              className="w-8 h-8 object-cover rounded border-2 border-amber-400 opacity-85"
+                                            />
+                                          ))}
+                                        </div>
                                       </div>
-                                      {session.role === "admin" && (
-                                        <input
-                                          type="file"
-                                          accept="image/*"
-                                          multiple
-                                          onChange={(e) => handleAdminStagePhotoUpload(sub.id, st.key, e.target.files)}
-                                          className="text-[10px] w-full"
-                                        />
-                                      )}
-                                      <div className="flex gap-1 mt-0.5">
-                                        {(sub.photos?.[st.key] || []).map((src, i) => (
-                                          <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border" />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {session.role === "admin" && pendingCount > 0 && (
+                                <div className="mt-2 p-2 rounded-xl bg-sun-50 border border-sun-300 space-y-1.5">
+                                  <div className="text-[10px] font-bold text-amber-900">
+                                    {pendingCount} foto baru belum disimpan
+                                  </div>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSavePendingPhotos(sub.id)}
+                                      className="flex-1 py-1 px-2 rounded-lg bg-rind-500 hover:bg-rind-600 text-white font-bold text-[10px] cursor-pointer"
+                                    >
+                                      💾 {t.savePhotosBtn}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelPendingPhotos(sub.id)}
+                                      className="py-1 px-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-[10px] cursor-pointer"
+                                    >
+                                      Batal
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {savedPhotoNoticeSubId === sub.id && (
+                                <div className="mt-1.5 px-2 py-1 rounded-lg bg-rind-100 text-rind-500 font-bold text-[10px]">
+                                  ✅ {t.photosSavedToast}
                                 </div>
                               )}
 
