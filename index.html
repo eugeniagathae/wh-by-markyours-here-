@@ -1,0 +1,2709 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WH By Markyours_here — Jastip &amp; Handcarry</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fredoka', 'Plus Jakarta Sans', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            melon: {
+              50: '#fff5f7',
+              100: '#ffe4ea',
+              200: '#ffc9d6',
+              300: '#ffa0b8',
+              400: '#fb6e92',
+              500: '#f14170',
+            },
+            rind: {
+              50: '#f3fdf6',
+              100: '#e2faea',
+              200: '#c3f3d4',
+              400: '#59cf8a',
+              500: '#34b46c',
+            },
+            sun: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              400: '#fbbf24',
+              500: '#f59e0b',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(155deg, #fff5f7 0%, #fffbeb 48%, #f3fdf6 100%);
+      min-height: 100vh;
+      color: #2b262d;
+    }
+    .sheet-scroll::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .sheet-scroll::-webkit-scrollbar-thumb {
+      background: #ffc9d6;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    const ADMIN_EMAIL = "markyours.here@gmail.com";
+    const ADMIN_PINS = {
+      Elsa: "1234",
+      Edith: "4321",
+    };
+    const CITIES = ["Tianjin", "Shanghai", "Nanjing"];
+    const STORAGE_KEY = "wh_by_markyours_here_v1_data";
+    const FB_CONFIG_KEY = "wh_by_markyours_here_fb_config";
+
+    const I18N = {
+      id: {
+        brand: "WH By Markyours_here",
+        tagline: "Jastip & Handcarry",
+        loginTitle: "Masuk ke Akun Kamu",
+        loginSub: "Masukkan email untuk mendapatkan kode akses berkelanjutan, atau ketik kode akses yang sudah dimiliki.",
+        loginPlaceholder: "Email atau Kode Akses (cth: nama@email.com / WM-1024)",
+        loginBtn: "Lanjut",
+        yourCode: "Kode Akses Kamu",
+        codeNote: "Simpan kode ini ya! Bisa dipakai seterusnya untuk cek & edit barangmu di bahasa apa pun.",
+        logout: "Keluar",
+        routeChinaIndo: "HC China - Indo",
+        routeChinaIndoDesc: "Titip belanja dari China ke Indonesia",
+        routeIndoChina: "HC Indo - China",
+        routeIndoChinaDesc: "Titip kirim dari Indonesia (Gudang Depok) ke China",
+        routeUsa: "WH USA (Cargo)",
+        routeUsaDesc: "Layanan Cargo Udara USA",
+        usaComingSoon: "WH USA (Cargo) Coming Soon! 🇺🇸🍉\nTim kami sedang menyiapkan form yang tepat untuk wH USA. Nantikan update selanjutnya ya!",
+        backRoute: "Ganti Jalur",
+        navForm: "Isi Form Barang",
+        navResi: "Isi Resi Barang",
+        navRekap: "Rekapan & Tracking",
+        navBilling: "Sheet Tagihan",
+        navTrip: "Pengaturan Kloter",
+        customerName: "Nama Customer",
+        phone: "No. HP",
+        socialId: "ID Line / TWT / IG",
+        uploaderName: "Nama Pengupload",
+        chinaRecipientName: "Nama Penerima di China",
+        chinaRecipientPhone: "No. HP Penerima di China",
+        chinaRecipientAddress: "Alamat Lengkap di China",
+        resiNumber: "Nomor Resi Barang",
+        resiOptionalHint: "Boleh dikosongkan dulu dan dilengkapi nanti di menu Isi Resi Barang.",
+        dupResiWarning: "Resi ini sudah pernah diinput, apakah ini isi paket gabungan?",
+        itemsTitle: "Daftar Barang",
+        addItem: "+ Tambah Barang",
+        itemName: "Nama Barang",
+        itemQty: "Jumlah",
+        itemCategory: "Kategori Barang",
+        catGoods: "Barang",
+        catPaperbased: "Paperbased",
+        catElectronic: "Elektronik",
+        catLiquid: "Liquid",
+        catSnack: "Snack",
+        goodsHandling: "Perlakuan Kemasan Barang",
+        handlingOptions: [
+          "Plastik dibawa & boleh dibuka untuk lihat detail barang",
+          "Plastik dibawa & jangan dibuka",
+          "Plastik dibuang",
+          "Box dilipat",
+          "Box dibuang",
+          "Box dibawa tanpa dilipat & mau lihat detail dalamnya",
+          "Box dibawa tanpa dilipat & jangan dibuka",
+        ],
+        paperOption: "Pilihan Paperbased",
+        paperOptions: [
+          { value: "sealed_no_lineup", label: "Sealed tidak foto jejer (contoh: 1 trading card / 1 kartu pokemon)" },
+          { value: "sealed_lineup", label: "Sealed foto jejer (lebih dari 1)" },
+          { value: "unsealed_lineup", label: "Unsealed foto jejer" },
+        ],
+        liquidMl: "Perkiraan Volume (ml)",
+        elecType: "Jenis Elektronik",
+        elecTypes: ["Powerbank", "HP", "Barang baterai lain"],
+        elecMah: "Kapasitas Baterai (mAh)",
+        snackCautionTitle: "Catatan Penting Pengiriman Snack (HC Indo - China)",
+        snackCautionPoints: [
+          "Kemasan Cup Noodles berpotensi gepeng/plastiknya terbuka karena tertumpuk/tertekan.",
+          "Kemasan snack bergelembung berpotensi kempes karena tertekan.",
+          "Kemasan mie instant dalam plastik berpotensi bocor atau mie instantnya sendiri berpotensi hancur",
+          "tetapi pembawa berusaha semaksimal mungkin agar tidak rusak",
+        ],
+        snackAckLabel: "Saya sudah membaca dan memahami risiko pengiriman Snack di atas.",
+        uploadItemPhoto: "Upload Foto Barang (Maks. 5 foto, otomatis dikompres)",
+        submitForm: "Simpan Form Barang",
+        formSaved: "Data barang berhasil disimpan! 🍉✨",
+        lockedNotice: "Form terkunci untuk edit detail karena barang sudah diproses gudang. Kamu tetap bisa Ganti Resi atau Ajukan Retur.",
+        changeResi: "Ganti Resi",
+        oldResi: "Resi Sebelumnya",
+        newResi: "Resi Baru",
+        saveResi: "Simpan Resi",
+        requestRetur: "Retur",
+        returCoUlang: "Retur CO Ulang",
+        returRefund: "Retur & Refund",
+        returNewResi: "Resi Baru CO Ulang",
+        returReason: "Keterangan (misal: tidak jadi / catatan)",
+        saveRetur: "Simpan Retur",
+        noResiYetTitle: "Barang yang Belum Ada Resinya",
+        noResiYetEmpty: "Tidak ada barang yang menunggu resi saat ini.",
+        filterAll: "Semua",
+        sortBy: "Urutkan",
+        sortDate: "Tanggal",
+        sortAlpha: "Abjad Nama",
+        sortCity: "Kota",
+        tripActive: "Trip Aktif",
+        tripNext: "Ikut Next Trip",
+        copyReceipt: "Salin Tagihan",
+        copied: "Tersalin!",
+      },
+      en: {
+        brand: "WH By Markyours_here",
+        tagline: "Jastip & Handcarry",
+        loginTitle: "Sign In to Your Account",
+        loginSub: "Enter your email to get a reusable access code, or enter an existing access code.",
+        loginPlaceholder: "Email or Access Code (e.g. name@email.com / WM-1024)",
+        loginBtn: "Continue",
+        yourCode: "Your Access Code",
+        codeNote: "Save this code! You can reuse it anytime to view & edit your items in any language.",
+        logout: "Sign Out",
+        routeChinaIndo: "HC China - Indo",
+        routeChinaIndoDesc: "Personal shopping from China to Indonesia",
+        routeIndoChina: "HC Indo - China",
+        routeIndoChinaDesc: "Shipping from Indonesia (Depok WH) to China",
+        routeUsa: "WH USA (Cargo)",
+        routeUsaDesc: "USA Air Cargo Service",
+        usaComingSoon: "WH USA (Cargo) Coming Soon! 🇺🇸🍉\nTim kami sedang menyiapkan form yang tepat untuk wH USA. Nantikan update selanjutnya ya!",
+        backRoute: "Switch Route",
+        navForm: "Item Form",
+        navResi: "Add Tracking No.",
+        navRekap: "Summary & Tracking",
+        navBilling: "Billing Sheet",
+        navTrip: "Batch Settings",
+        customerName: "Customer Name",
+        phone: "Phone Number",
+        socialId: "Line / TWT / IG ID",
+        uploaderName: "Uploader Name",
+        chinaRecipientName: "Recipient Name in China",
+        chinaRecipientPhone: "Recipient Phone in China",
+        chinaRecipientAddress: "Full Address in China",
+        resiNumber: "Tracking Number (Resi)",
+        resiOptionalHint: "Can be left blank for now and added later under Add Tracking No.",
+        dupResiWarning: "This tracking number has already been entered—is this a combined package?",
+        itemsTitle: "Items List",
+        addItem: "+ Add Item",
+        itemName: "Item Name",
+        itemQty: "Qty",
+        itemCategory: "Item Category",
+        catGoods: "General Goods",
+        catPaperbased: "Paperbased",
+        catElectronic: "Electronic",
+        catLiquid: "Liquid",
+        catSnack: "Snack",
+        goodsHandling: "Packaging Handling Preference",
+        handlingOptions: [
+          "Keep plastic & allow opening to inspect item details",
+          "Keep plastic & do not open",
+          "Discard plastic",
+          "Fold box",
+          "Discard box",
+          "Keep box unfolded & inspect inside details",
+          "Keep box unfolded & do not open",
+        ],
+        paperOption: "Paperbased Option",
+        paperOptions: [
+          { value: "sealed_no_lineup", label: "Sealed, no side-by-side photo (e.g. 1 trading card / 1 pokemon card)" },
+          { value: "sealed_lineup", label: "Sealed, side-by-side photo (more than 1)" },
+          { value: "unsealed_lineup", label: "Unsealed, side-by-side photo" },
+        ],
+        liquidMl: "Estimated Volume (ml)",
+        elecType: "Electronic Type",
+        elecTypes: ["Powerbank", "Phone (HP)", "Other battery item"],
+        elecMah: "Battery Capacity (mAh)",
+        snackCautionTitle: "Important Shipping Caution for Snacks (HC Indo - China)",
+        snackCautionPoints: [
+          "Cup Noodles packaging may get dented/flattened or its plastic may open from stacking/pressure.",
+          "Puffy snack bags may deflate due to pressure.",
+          "Plastic-packed instant noodles may leak or the noodles themselves may crumble,",
+          "tetapi pembawa berusaha semaksimal mungkin agar tidak rusak (the carrier will make every possible effort to prevent damage).",
+        ],
+        snackAckLabel: "I have read and understood the Snack shipping risks above.",
+        uploadItemPhoto: "Upload Item Photos (Max 5 photos, auto-compressed)",
+        submitForm: "Submit Item Form",
+        formSaved: "Item data saved successfully! 🍉✨",
+        lockedNotice: "Item details are locked because the warehouse has processed this item. You can still Change Tracking No. or Request Return.",
+        changeResi: "Change Resi",
+        oldResi: "Previous Resi",
+        newResi: "New Resi",
+        saveResi: "Save Resi",
+        requestRetur: "Return",
+        returCoUlang: "Re-checkout Return",
+        returRefund: "Return & Refund",
+        returNewResi: "New Re-checkout Resi",
+        returReason: "Notes (e.g. cancelled / reason)",
+        saveRetur: "Save Return",
+        noResiYetTitle: "Items Without Tracking Number Yet",
+        noResiYetEmpty: "No items are waiting for a tracking number right now.",
+        filterAll: "All",
+        sortBy: "Sort By",
+        sortDate: "Date",
+        sortAlpha: "Name (A-Z)",
+        sortCity: "City",
+        tripActive: "Active Trip",
+        tripNext: "Next Trip",
+        copyReceipt: "Copy Bill",
+        copied: "Copied!",
+      },
+      zh: {
+        brand: "WH By Markyours_here",
+        tagline: "Jastip & Handcarry",
+        loginTitle: "登录您的账户",
+        loginSub: "输入邮箱获取可长期使用的访问码，或直接输入已有的访问码。",
+        loginPlaceholder: "邮箱或访问码（例：name@email.com / WM-1024）",
+        loginBtn: "继续",
+        yourCode: "您的访问码",
+        codeNote: "请妥善保存此访问码！以后可随时使用，并可切换任意语言查看与编辑您的订单。",
+        logout: "退出登录",
+        routeChinaIndo: "HC China - Indo",
+        routeChinaIndoDesc: "中国代购 / 人肉带回印尼",
+        routeIndoChina: "HC Indo - China",
+        routeIndoChinaDesc: "印尼（德波仓库）寄往中国",
+        routeUsa: "WH USA (Cargo)",
+        routeUsaDesc: "美国空运专线",
+        usaComingSoon: "WH USA (Cargo) Coming Soon! 🇺🇸🍉\nTim kami sedang menyiapkan form yang tepat untuk wH USA. Nantikan update selanjutnya ya!",
+        backRoute: "切换线路",
+        navForm: "填写商品表单",
+        navResi: "补填单号",
+        navRekap: "汇总与追踪",
+        navBilling: "账单表格",
+        navTrip: "批次设置",
+        customerName: "客户姓名",
+        phone: "联系电话",
+        socialId: "Line / 推特 / IG 账号",
+        uploaderName: "填表人姓名",
+        chinaRecipientName: "中国收件人姓名",
+        chinaRecipientPhone: "中国收件人电话",
+        chinaRecipientAddress: "中国详细收件地址",
+        resiNumber: "物流单号",
+        resiOptionalHint: "可先留空，稍后在“补填单号”中补充。",
+        dupResiWarning: "该单号已录入过，是否为合并包裹？",
+        itemsTitle: "商品明细",
+        addItem: "+ 添加商品",
+        itemName: "商品名称",
+        itemQty: "数量",
+        itemCategory: "商品类别",
+        catGoods: "普通商品",
+        catPaperbased: "纸片/周边",
+        catElectronic: "电子产品",
+        catLiquid: "液体类",
+        catSnack: "零食/泡面",
+        goodsHandling: "包装处理偏好",
+        handlingOptions: [
+          "保留塑料袋，可拆开查看商品细节",
+          "保留塑料袋，请勿拆开",
+          "丢弃塑料袋",
+          "折叠纸盒",
+          "丢弃纸盒",
+          "保留未折叠纸盒，查看内部细节",
+          "保留未折叠纸盒，请勿拆开",
+        ],
+        paperOption: "纸片类选项",
+        paperOptions: [
+          { value: "sealed_no_lineup", label: "未拆封不并排拍照（例：1张集换卡/宝可梦卡）" },
+          { value: "sealed_lineup", label: "未拆封并排拍照（多于1件）" },
+          { value: "unsealed_lineup", label: "已拆封并排拍照" },
+        ],
+        liquidMl: "预估容量（ml）",
+        elecType: "电子产品类型",
+        elecTypes: ["充电宝", "手机", "其他带电物品"],
+        elecMah: "电池容量（mAh）",
+        snackCautionTitle: "零食类运输风险提示（HC Indo - China）",
+        snackCautionPoints: [
+          "杯面包装可能因堆叠或挤压而变形/塑料膜掀开。",
+          "膨化零食袋可能因受压而漏气变瘪。",
+          "塑料袋装方便面可能破损漏出，或面饼碎裂；",
+          "tetapi pembawa berusaha semaksimal mungkin agar tidak rusak（携带者将尽最大努力避免损坏）。",
+        ],
+        snackAckLabel: "我已阅读并理解上述零食运输风险。",
+        uploadItemPhoto: "上传商品照片（最多5张，自动压缩）",
+        submitForm: "提交商品表单",
+        formSaved: "商品信息已保存！🍉✨",
+        lockedNotice: "仓库已开始处理此商品，详情已锁定。您仍可修改单号或申请退货。",
+        changeResi: "修改单号",
+        oldResi: "原单号",
+        newResi: "新单号",
+        saveResi: "保存单号",
+        requestRetur: "退货处理",
+        returCoUlang: "重新下单退货",
+        returRefund: "退货退款",
+        returNewResi: "重拍新单号",
+        returReason: "备注说明（如：取消/原因）",
+        saveRetur: "保存退货",
+        noResiYetTitle: "尚未填写单号的商品",
+        noResiYetEmpty: "目前没有待补填单号的商品。",
+        filterAll: "全部",
+        sortBy: "排序方式",
+        sortDate: "日期",
+        sortAlpha: "姓名首字母",
+        sortCity: "城市",
+        tripActive: "当前批次",
+        tripNext: "顺延下批",
+        copyReceipt: "复制账单",
+        copied: "已复制！",
+      }
+    };
+
+    const STATUS_LIST = [
+      "Menunggu Resi",
+      "Dalam Pengiriman",
+      "Sampai Gudang",
+      "Ditimbang",
+      "Siap Kirim / Selesai",
+      "Retur",
+    ];
+
+    const LOCKED_STATUSES = ["Sampai Gudang", "Ditimbang", "Siap Kirim / Selesai"];
+
+    function createInitialData() {
+      return {
+        tripConfig: {
+          "china-indo": { lastReceive: "2026-12-05", departDate: "2026-12-10", defaultRate: 180 },
+          "indo-china": { lastReceive: "2026-12-06", departDate: "2026-12-11", defaultRate: 175, yuanRate: 2200 },
+        },
+        customers: [
+          { email: "rachel.tan@example.com", code: "WM-2104", name: "Rachel Tan", phone: "081234567890", socialId: "@racheltan" },
+          { email: "budi.santoso@example.com", code: "WM-5831", name: "Budi Santoso", phone: "085611223344", socialId: "@budisantoso" },
+        ],
+        submissions: [
+          {
+            id: "SUB-1001",
+            route: "china-indo",
+            createdAt: "2026-11-20T09:30:00.000Z",
+            customerCode: "WM-2104",
+            customerEmail: "rachel.tan@example.com",
+            customerName: "Rachel Tan",
+            phone: "081234567890",
+            socialId: "@racheltan",
+            uploaderName: "Rachel Tan",
+            chinaRecipient: { name: "", phone: "", address: "" },
+            resi: "TB99887766",
+            resiHistory: [],
+            status: "Ditimbang",
+            tripOverride: "auto",
+            city: "Shanghai",
+            sortedChecked: true,
+            indoResi: "JNE-889911",
+            shortageNote: "",
+            returInfo: null,
+            currency: "IDR",
+            ratePerGram: 180,
+            extraFee: 15000,
+            paidAmount: 50000,
+            paymentStatus: "DP",
+            lastAudit: "Diupdate oleh Elsa - 22 Nov 15:10",
+            photos: {
+              arrival: [],
+              scale: [],
+              indoItem: [],
+              indoPack: [],
+              koperPack: [],
+            },
+            items: [
+              {
+                id: "ITM-1",
+                name: "Photocard Binder A5",
+                qty: 2,
+                category: "paperbased",
+                goodsHandling: "",
+                paperOption: "sealed_lineup",
+                liquidMl: "",
+                elecType: "",
+                elecMah: "",
+                snackAck: false,
+                weightGram: 420,
+                photos: [],
+              }
+            ]
+          },
+          {
+            id: "SUB-1002",
+            route: "indo-china",
+            createdAt: "2026-11-22T14:15:00.000Z",
+            customerCode: "WM-5831",
+            customerEmail: "budi.santoso@example.com",
+            customerName: "Budi Santoso",
+            phone: "085611223344",
+            socialId: "@budisantoso",
+            uploaderName: "Budi Santoso",
+            chinaRecipient: {
+              name: "Lin Wei",
+              phone: "+86 13800138000",
+              address: "No. 88 Nanjing East Road, Huangpu District, Shanghai 200001",
+            },
+            resi: "",
+            resiHistory: [],
+            status: "Menunggu Resi",
+            tripOverride: "auto",
+            city: "Depok",
+            sortedChecked: false,
+            indoResi: "",
+            shortageNote: "Cek stok keripik singkong",
+            returInfo: null,
+            currency: "CNY",
+            ratePerGram: 175,
+            extraFee: 0,
+            paidAmount: 0,
+            paymentStatus: "Belum Lunas",
+            lastAudit: "Diupdate oleh Edith - 23 Nov 10:05",
+            photos: {
+              arrival: [],
+              scale: [],
+              indoItem: [],
+              indoPack: [],
+              koperPack: [],
+            },
+            items: [
+              {
+                id: "ITM-2",
+                name: "Keripik Singkong & Cup Noodle",
+                qty: 3,
+                category: "snack",
+                goodsHandling: "",
+                paperOption: "",
+                liquidMl: "",
+                elecType: "",
+                elecMah: "",
+                snackAck: true,
+                weightGram: 650,
+                photos: [],
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    function compressImageFile(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const maxW = 600;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxW) {
+              h = Math.round((h * maxW) / w);
+              w = maxW;
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.65));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function formatIdr(num) {
+      return "Rp " + Math.round(Number(num || 0)).toLocaleString("id-ID");
+    }
+
+    function computeSubmissionTotal(sub, tripConfig) {
+      const cfg = tripConfig[sub.route] || { defaultRate: 180, yuanRate: 2200 };
+      const totalGrams = (sub.items || []).reduce((acc, it) => acc + Number(it.weightGram || 0), 0);
+      const rate = Number(sub.ratePerGram ?? cfg.defaultRate ?? 180);
+      const extra = Number(sub.extraFee || 0);
+      const totalIdr = totalGrams * rate + extra;
+      if (sub.route === "indo-china" && sub.currency === "CNY") {
+        const yRate = Number(cfg.yuanRate || 2200);
+        return {
+          totalGrams,
+          rate,
+          extra,
+          totalIdr,
+          displayTotal: totalIdr / yRate,
+          currency: "CNY",
+          paid: Number(sub.paidAmount || 0),
+          remaining: Math.max(0, totalIdr - Number(sub.paidAmount || 0)),
+        };
+      }
+      return {
+        totalGrams,
+        rate,
+        extra,
+        totalIdr,
+        displayTotal: totalIdr,
+        currency: "IDR",
+        paid: Number(sub.paidAmount || 0),
+        remaining: Math.max(0, totalIdr - Number(sub.paidAmount || 0)),
+      };
+    }
+
+    function isNextTrip(sub, tripConfig) {
+      if (sub.tripOverride === "ikut trip ini") return false;
+      if (sub.tripOverride === "ikut next trip") return true;
+      const cfg = tripConfig[sub.route];
+      if (!cfg || !cfg.lastReceive) return false;
+      const createdDay = (sub.createdAt || "").slice(0, 10);
+      return createdDay > cfg.lastReceive;
+    }
+
+    function App() {
+      const [progress, setProgress] = useState(0);
+      const [loaded, setLoaded] = useState(false);
+
+      const [db, setDb] = useState(() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) return JSON.parse(raw);
+        } catch (err) {}
+        return createInitialData();
+      });
+
+      const [session, setSession] = useState(null);
+      const [loginInput, setLoginInput] = useState("");
+      const [pendingAdminEmail, setPendingAdminEmail] = useState(false);
+      const [selectedAdminName, setSelectedAdminName] = useState("Elsa");
+      const [adminPin, setAdminPin] = useState("");
+      const [loginError, setLoginError] = useState("");
+      const [issuedCodeBanner, setIssuedCodeBanner] = useState("");
+
+      const [lang, setLang] = useState("id");
+      const [route, setRoute] = useState(null);
+      const [activeTab, setActiveTab] = useState("form");
+
+      // Form states
+      const [formData, setFormData] = useState({
+        customerName: "",
+        phone: "",
+        socialId: "",
+        uploaderName: "",
+        chinaRecipientName: "",
+        chinaRecipientPhone: "",
+        chinaRecipientAddress: "",
+        resi: "",
+        items: [
+          {
+            id: "new-1",
+            name: "",
+            qty: 1,
+            category: "goods",
+            goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
+            paperOption: "sealed_no_lineup",
+            liquidMl: "",
+            elecType: "Powerbank",
+            elecMah: "",
+            snackAck: false,
+            weightGram: 0,
+            photos: [],
+          }
+        ]
+      });
+      const [formToast, setFormToast] = useState("");
+      const [formError, setFormError] = useState("");
+
+      // Susul resi / ganti resi / retur modals
+      const [resiDrafts, setResiDrafts] = useState({});
+      const [changeResiModal, setChangeResiModal] = useState(null);
+      const [newResiInput, setNewResiInput] = useState("");
+      const [returModal, setReturModal] = useState(null);
+      const [returType, setReturType] = useState("Retur CO Ulang");
+      const [returNewResi, setReturNewResi] = useState("");
+      const [returReason, setReturReason] = useState("");
+
+      // Rekap & Billing filters
+      const [searchResi, setSearchResi] = useState("");
+      const [filterCategory, setFilterCategory] = useState("all");
+      const [filterStatus, setFilterStatus] = useState("all");
+      const [filterCity, setFilterCity] = useState("all");
+      const [filterCustomer, setFilterCustomer] = useState("all");
+      const [filterUploader, setFilterUploader] = useState("all");
+      const [sortBy, setSortBy] = useState("date");
+      const [tripFilter, setTripFilter] = useState("all");
+      const [billingGroupByCustomer, setBillingGroupByCustomer] = useState(true);
+      const [copiedKey, setCopiedKey] = useState("");
+
+      // Sync / Backup modal
+      const [showSyncModal, setShowSyncModal] = useState(false);
+      const [fbConfigText, setFbConfigText] = useState(() => localStorage.getItem(FB_CONFIG_KEY) || "");
+      const [syncStatusMsg, setSyncStatusMsg] = useState("");
+
+      const t = useMemo(() => {
+        if (session?.role === "admin") return I18N.id;
+        return I18N[lang] || I18N.id;
+      }, [session, lang]);
+
+      useEffect(() => {
+        let current = 0;
+        const timer = setInterval(() => {
+          current += Math.floor(Math.random() * 14) + 9;
+          if (current >= 100) {
+            current = 100;
+            setProgress(100);
+            clearInterval(timer);
+            setTimeout(() => setLoaded(true), 240);
+          } else {
+            setProgress(current);
+          }
+        }, 70);
+        return () => clearInterval(timer);
+      }, []);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+        } catch (err) {}
+      }, [db]);
+
+      useEffect(() => {
+        if (session && session.role === "customer") {
+          setFormData((prev) => ({
+            ...prev,
+            customerName: prev.customerName || session.name || "",
+            phone: prev.phone || session.phone || "",
+            socialId: prev.socialId || session.socialId || "",
+            uploaderName: prev.uploaderName || session.name || "",
+          }));
+        }
+      }, [session]);
+
+      const actorLabel = session?.role === "admin" ? session.adminName : session?.name || "User";
+
+      function stampAudit(actionText) {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const formatted = `${pad(now.getDate())} ${now.toLocaleString("id-ID", { month: "short" })} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        return `${actionText || "Diupdate"} oleh ${actorLabel} - ${formatted}`;
+      }
+
+      function handleLoginSubmit(e) {
+        e.preventDefault();
+        setLoginError("");
+        const val = loginInput.trim();
+        if (!val) {
+          setLoginError("Silakan isi email atau kode akses terlebih dahulu.");
+          return;
+        }
+
+        if (val.toLowerCase() === ADMIN_EMAIL) {
+          setPendingAdminEmail(true);
+          return;
+        }
+
+        // Check existing customer by code or email
+        const existing = db.customers.find(
+          (c) => c.code.toLowerCase() === val.toLowerCase() || c.email.toLowerCase() === val.toLowerCase()
+        );
+        if (existing) {
+          setSession({
+            role: "customer",
+            code: existing.code,
+            email: existing.email,
+            name: existing.name,
+            phone: existing.phone,
+            socialId: existing.socialId,
+          });
+          setIssuedCodeBanner("");
+          return;
+        }
+
+        if (val.includes("@")) {
+          const randomDigits = Math.floor(1000 + Math.random() * 9000);
+          const newCode = `WM-${randomDigits}`;
+          const newCust = {
+            email: val.toLowerCase(),
+            code: newCode,
+            name: val.split("@")[0],
+            phone: "",
+            socialId: "",
+          };
+          setDb((prev) => ({ ...prev, customers: [...prev.customers, newCust] }));
+          setIssuedCodeBanner(newCode);
+          setSession({
+            role: "customer",
+            code: newCode,
+            email: newCust.email,
+            name: newCust.name,
+            phone: "",
+            socialId: "",
+          });
+        } else {
+          setLoginError("Kode akses tidak ditemukan. Masukkan email valid untuk membuat kode baru.");
+        }
+      }
+
+      function handleAdminPinVerify(e) {
+        e.preventDefault();
+        setLoginError("");
+        const expected = ADMIN_PINS[selectedAdminName];
+        if (adminPin.trim() === expected) {
+          setSession({
+            role: "admin",
+            adminName: selectedAdminName,
+            email: ADMIN_EMAIL,
+          });
+          setPendingAdminEmail(false);
+          setAdminPin("");
+          setActiveTab("rekap");
+        } else {
+          setLoginError("PIN admin tidak sesuai.");
+        }
+      }
+
+      function handleLogout() {
+        setSession(null);
+        setRoute(null);
+        setLoginInput("");
+        setPendingAdminEmail(false);
+        setAdminPin("");
+        setLoginError("");
+      }
+
+      function addNewItemRow() {
+        setFormData((prev) => ({
+          ...prev,
+          items: [
+            ...prev.items,
+            {
+              id: "itm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+              name: "",
+              qty: 1,
+              category: route === "indo-china" ? "snack" : "goods",
+              goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
+              paperOption: "sealed_no_lineup",
+              liquidMl: "",
+              elecType: "Powerbank",
+              elecMah: "",
+              snackAck: false,
+              weightGram: 0,
+              photos: [],
+            }
+          ]
+        }));
+      }
+
+      function updateItemRow(idx, patch) {
+        setFormData((prev) => {
+          const nextItems = [...prev.items];
+          nextItems[idx] = { ...nextItems[idx], ...patch };
+          return { ...prev, items: nextItems };
+        });
+      }
+
+      function removeItemRow(idx) {
+        setFormData((prev) => {
+          if (prev.items.length <= 1) return prev;
+          return { ...prev, items: prev.items.filter((_, i) => i !== idx) };
+        });
+      }
+
+      async function handleItemPhotoUpload(idx, filesList) {
+        const files = Array.from(filesList || []);
+        const currentPhotos = formData.items[idx]?.photos || [];
+        const remainingSlots = Math.max(0, 5 - currentPhotos.length);
+        const toProcess = files.slice(0, remainingSlots);
+        const compressed = [];
+        for (const f of toProcess) {
+          compressed.push(await compressImageFile(f));
+        }
+        updateItemRow(idx, { photos: [...currentPhotos, ...compressed] });
+      }
+
+      const duplicateResiMatch = useMemo(() => {
+        const clean = (formData.resi || "").trim().toLowerCase();
+        if (!clean) return false;
+        return db.submissions.some((s) => (s.resi || "").trim().toLowerCase() === clean);
+      }, [formData.resi, db.submissions]);
+
+      function handleFormSubmit(e) {
+        e.preventDefault();
+        setFormError("");
+        setFormToast("");
+
+        if (!formData.customerName.trim()) {
+          setFormError("Nama wajib diisi.");
+          return;
+        }
+        if (route === "indo-china") {
+          for (const it of formData.items) {
+            if (it.category === "snack" && !it.snackAck) {
+              setFormError(t.snackAckLabel);
+              return;
+            }
+          }
+        }
+
+        const cfg = db.tripConfig[route] || { defaultRate: 180 };
+        const cleanResi = formData.resi.trim();
+        const newSub = {
+          id: "SUB-" + Date.now().toString().slice(-6),
+          route,
+          createdAt: new Date().toISOString(),
+          customerCode: session.role === "customer" ? session.code : "ADMIN-ENTRY",
+          customerEmail: session.role === "customer" ? session.email : ADMIN_EMAIL,
+          customerName: formData.customerName.trim(),
+          phone: formData.phone.trim(),
+          socialId: formData.socialId.trim(),
+          uploaderName: formData.uploaderName.trim() || actorLabel,
+          chinaRecipient: {
+            name: formData.chinaRecipientName.trim(),
+            phone: formData.chinaRecipientPhone.trim(),
+            address: formData.chinaRecipientAddress.trim(),
+          },
+          resi: cleanResi,
+          resiHistory: [],
+          status: cleanResi ? "Dalam Pengiriman" : "Menunggu Resi",
+          tripOverride: "auto",
+          city: route === "indo-china" ? "Depok" : "Shanghai",
+          sortedChecked: false,
+          indoResi: "",
+          shortageNote: "",
+          returInfo: null,
+          currency: "IDR",
+          ratePerGram: cfg.defaultRate || 180,
+          extraFee: 0,
+          paidAmount: 0,
+          paymentStatus: "Belum Lunas",
+          lastAudit: stampAudit("Diinput"),
+          photos: {
+            arrival: [],
+            scale: [],
+            indoItem: [],
+            indoPack: [],
+            koperPack: [],
+          },
+          items: formData.items.map((it, i) => ({
+            ...it,
+            id: it.id || `ITM-${Date.now()}-${i}`,
+            name: it.name.trim() || `Barang #${i + 1}`,
+            qty: Math.max(1, Number(it.qty || 1)),
+            weightGram: Number(it.weightGram || 0),
+          })),
+        };
+
+        setDb((prev) => ({
+          ...prev,
+          submissions: [newSub, ...prev.submissions],
+        }));
+
+        setFormToast(t.formSaved);
+        setFormData((prev) => ({
+          ...prev,
+          resi: "",
+          items: [
+            {
+              id: "itm-" + Date.now(),
+              name: "",
+              qty: 1,
+              category: route === "indo-china" ? "snack" : "goods",
+              goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
+              paperOption: "sealed_no_lineup",
+              liquidMl: "",
+              elecType: "Powerbank",
+              elecMah: "",
+              snackAck: false,
+              weightGram: 0,
+              photos: [],
+            }
+          ]
+        }));
+      }
+
+      function updateSubmission(subId, updater) {
+        setDb((prev) => ({
+          ...prev,
+          submissions: prev.submissions.map((s) => {
+            if (s.id !== subId) return s;
+            const patch = typeof updater === "function" ? updater(s) : updater;
+            return {
+              ...s,
+              ...patch,
+              lastAudit: stampAudit("Diupdate"),
+            };
+          }),
+        }));
+      }
+
+      async function handleAdminStagePhotoUpload(subId, stageKey, filesList) {
+        const files = Array.from(filesList || []);
+        const targetSub = db.submissions.find((s) => s.id === subId);
+        const current = targetSub?.photos?.[stageKey] || [];
+        const slots = Math.max(0, 5 - current.length);
+        const compressed = [];
+        for (const f of files.slice(0, slots)) {
+          compressed.push(await compressImageFile(f));
+        }
+        updateSubmission(subId, (prev) => ({
+          photos: {
+            ...prev.photos,
+            [stageKey]: [...(prev.photos?.[stageKey] || []), ...compressed],
+          },
+        }));
+      }
+
+      function handleSaveMissingResi(subId) {
+        const val = (resiDrafts[subId] || "").trim();
+        if (!val) return;
+        updateSubmission(subId, (prev) => ({
+          resi: val,
+          status: prev.status === "Menunggu Resi" ? "Dalam Pengiriman" : prev.status,
+        }));
+        setResiDrafts((prev) => ({ ...prev, [subId]: "" }));
+      }
+
+      function handleConfirmChangeResi() {
+        if (!changeResiModal || !newResiInput.trim()) return;
+        const target = db.submissions.find((s) => s.id === changeResiModal);
+        if (!target) return;
+        const oldVal = target.resi || "(Kosong)";
+        const nextVal = newResiInput.trim();
+        updateSubmission(changeResiModal, {
+          resi: nextVal,
+          resiHistory: [
+            ...(target.resiHistory || []),
+            { from: oldVal, to: nextVal, by: actorLabel, at: new Date().toLocaleString("id-ID") },
+          ],
+        });
+        setChangeResiModal(null);
+        setNewResiInput("");
+      }
+
+      function handleConfirmRetur() {
+        if (!returModal) return;
+        updateSubmission(returModal, {
+          status: "Retur",
+          resi: returType === "Retur CO Ulang" && returNewResi.trim() ? returNewResi.trim() : undefined,
+          returInfo: {
+            type: returType,
+            newResi: returNewResi.trim(),
+            reason: returReason.trim(),
+            by: actorLabel,
+          },
+        });
+        setReturModal(null);
+        setReturNewResi("");
+        setReturReason("");
+      }
+
+      function copyReceiptText(key, text) {
+        navigator.clipboard?.writeText(text);
+        setCopiedKey(key);
+        setTimeout(() => setCopiedKey(""), 1800);
+      }
+
+      function exportCsv() {
+        const headers = [
+          "ID", "Jalur", "Tanggal", "Kode Cust", "Nama", "No HP", "Pengupload",
+          "Resi", "Status", "Kloter", "Kota", "Sortir", "Resi Indo",
+          "Berat (g)", "Tarif/g", "Biaya Tambahan", "Total (IDR)", "DP", "Sisa", "Status Bayar", "Catatan"
+        ];
+        const rows = visibleSubmissions.map((s) => {
+          const calc = computeSubmissionTotal(s, db.tripConfig);
+          return [
+            s.id, s.route, (s.createdAt || "").slice(0, 10), s.customerCode,
+            s.customerName, s.phone, s.uploaderName, s.resi, s.status,
+            isNextTrip(s, db.tripConfig) ? "Ikut Next Trip" : "Trip Aktif",
+            s.city, s.sortedChecked ? "Ya" : "Belum", s.indoResi,
+            calc.totalGrams, calc.rate, calc.extra, Math.round(calc.totalIdr),
+            calc.paid, Math.round(calc.remaining), s.paymentStatus, s.shortageNote || ""
+          ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",");
+        });
+        const csv = [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wh-markyours-here-${route || "all"}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function exportJsonBackup() {
+        const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wh-markyours-here-backup.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function handleImportJson(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (parsed && Array.isArray(parsed.submissions)) {
+              setDb(parsed);
+              setSyncStatusMsg("Backup JSON berhasil dimuat!");
+            } else {
+              setSyncStatusMsg("Format JSON tidak valid.");
+            }
+          } catch {
+            setSyncStatusMsg("Gagal membaca file JSON.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function saveFirebaseConfig() {
+        localStorage.setItem(FB_CONFIG_KEY, fbConfigText);
+        setSyncStatusMsg("Konfigurasi Firebase disimpan di browser. Pastikan SDK/rules proyek aktif untuk sinkronisasi cloud.");
+      }
+
+      // Filtered & sorted submissions for current route and role
+      const visibleSubmissions = useMemo(() => {
+        if (!route || route === "usa-cargo" || !session) return [];
+        let list = db.submissions.filter((s) => s.route === route);
+
+        if (session.role === "customer") {
+          list = list.filter((s) => s.customerCode === session.code);
+        }
+
+        if (searchResi.trim()) {
+          const q = searchResi.trim().toLowerCase();
+          list = list.filter(
+            (s) =>
+              (s.resi || "").toLowerCase().includes(q) ||
+              (s.indoResi || "").toLowerCase().includes(q) ||
+              (s.customerName || "").toLowerCase().includes(q) ||
+              (s.items || []).some((it) => (it.name || "").toLowerCase().includes(q))
+          );
+        }
+
+        if (filterCategory !== "all") {
+          list = list.filter((s) => (s.items || []).some((it) => it.category === filterCategory));
+        }
+
+        if (filterStatus !== "all") {
+          list = list.filter((s) => s.status === filterStatus);
+        }
+
+        if (session.role === "admin") {
+          if (route === "china-indo" && filterCity !== "all") {
+            list = list.filter((s) => s.city === filterCity);
+          }
+          if (filterCustomer !== "all") {
+            list = list.filter((s) => s.customerName === filterCustomer);
+          }
+          if (filterUploader !== "all") {
+            list = list.filter((s) => s.uploaderName === filterUploader);
+          }
+        }
+
+        if (tripFilter === "active") {
+          list = list.filter((s) => !isNextTrip(s, db.tripConfig));
+        } else if (tripFilter === "next") {
+          list = list.filter((s) => isNextTrip(s, db.tripConfig));
+        }
+
+        const sorted = [...list];
+        if (sortBy === "alpha") {
+          sorted.sort((a, b) => (a.customerName || "").localeCompare(b.customerName || "", "id"));
+        } else if (sortBy === "city") {
+          sorted.sort((a, b) => (a.city || "").localeCompare(b.city || "", "id"));
+        } else {
+          sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
+        return sorted;
+      }, [
+        db.submissions,
+        db.tripConfig,
+        route,
+        session,
+        searchResi,
+        filterCategory,
+        filterStatus,
+        filterCity,
+        filterCustomer,
+        filterUploader,
+        tripFilter,
+        sortBy,
+      ]);
+
+      const uniqueCustomers = useMemo(() => {
+        const names = new Set(db.submissions.filter((s) => s.route === route).map((s) => s.customerName).filter(Boolean));
+        return Array.from(names);
+      }, [db.submissions, route]);
+
+      const uniqueUploaders = useMemo(() => {
+        const names = new Set(db.submissions.filter((s) => s.route === route).map((s) => s.uploaderName).filter(Boolean));
+        return Array.from(names);
+      }, [db.submissions, route]);
+
+      const missingResiList = useMemo(() => {
+        if (!route || route === "usa-cargo" || !session) return [];
+        return db.submissions.filter((s) => {
+          if (s.route !== route) return false;
+          if (session.role === "customer" && s.customerCode !== session.code) return false;
+          return !(s.resi || "").trim();
+        });
+      }, [db.submissions, route, session]);
+
+      const aggregatedBillingByCustomer = useMemo(() => {
+        const map = new Map();
+        for (const sub of visibleSubmissions) {
+          const calc = computeSubmissionTotal(sub, db.tripConfig);
+          const key = sub.customerCode || sub.customerName;
+          if (!map.has(key)) {
+            map.set(key, {
+              key,
+              customerName: sub.customerName,
+              customerCode: sub.customerCode,
+              currency: sub.currency || "IDR",
+              totalGrams: 0,
+              totalIdr: 0,
+              paid: 0,
+              remaining: 0,
+              resiCount: 0,
+              subs: [],
+            });
+          }
+          const entry = map.get(key);
+          entry.totalGrams += calc.totalGrams;
+          entry.totalIdr += calc.totalIdr;
+          entry.paid += calc.paid;
+          entry.remaining += calc.remaining;
+          if ((sub.resi || "").trim()) entry.resiCount += 1;
+          entry.subs.push({ sub, calc });
+        }
+        return Array.from(map.values());
+      }, [visibleSubmissions, db.tripConfig]);
+
+      if (!loaded) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+            <div className="bg-white/90 backdrop-blur border-2 border-melon-200 rounded-3xl p-8 max-w-sm w-full shadow-lg">
+              <div className="text-5xl mb-3">🍉☀️🌴</div>
+              <h1 className="font-display text-2xl font-bold text-melon-500">WH By Markyours_here</h1>
+              <p className="text-sm text-gray-600 mt-1 mb-5">Jastip &amp; Handcarry • Memuat aplikasi...</p>
+              <div className="w-full h-4 bg-melon-100 rounded-full overflow-hidden border border-melon-200">
+                <div
+                  className="h-full bg-gradient-to-r from-melon-400 via-sun-400 to-rind-400 transition-all duration-150"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="mt-2 font-display font-bold text-lg text-melon-500">{progress}%</div>
+            </div>
+          </div>
+        );
+      }
+
+      if (!session) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white/95 backdrop-blur border-2 border-melon-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sun-100 text-amber-800 text-xs font-semibold">
+                  🍉☀️ Jastip &amp; Handcarry
+                </span>
+                <div className="flex gap-1 bg-melon-50 p-1 rounded-xl border border-melon-200">
+                  {["id", "en", "zh"].map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => setLang(l)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${
+                        lang === l ? "bg-melon-400 text-white" : "text-gray-600 hover:bg-melon-100"
+                      }`}
+                    >
+                      {l === "zh" ? "中文" : l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-melon-500">{t.brand}</h1>
+              <p className="text-sm font-medium text-rind-500 mb-3">{t.tagline} ✨🌊</p>
+
+              {!pendingAdminEmail ? (
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <p className="text-xs text-gray-600 leading-relaxed">{t.loginSub}</p>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">{t.loginTitle}</label>
+                    <input
+                      type="text"
+                      value={loginInput}
+                      onChange={(e) => setLoginInput(e.target.value)}
+                      placeholder={t.loginPlaceholder}
+                      className="w-full px-4 py-3 rounded-2xl border-2 border-melon-200 focus:border-melon-400 focus:outline-none text-sm bg-melon-50/40"
+                    />
+                  </div>
+                  {loginError && <p className="text-xs font-semibold text-red-600 bg-red-50 p-2.5 rounded-xl">{loginError}</p>}
+                  <button
+                    type="submit"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-melon-400 to-melon-500 hover:opacity-95 text-white font-display font-semibold text-base shadow-md cursor-pointer"
+                  >
+                    {t.loginBtn} 🍉
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleAdminPinVerify} className="space-y-4 bg-sun-50/70 p-4 rounded-2xl border border-sun-200">
+                  <div className="text-xs font-semibold text-amber-900">Verifikasi Akses</div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Pilih Profil</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["Elsa", "Edith"].map((adm) => (
+                        <button
+                          key={adm}
+                          type="button"
+                          onClick={() => setSelectedAdminName(adm)}
+                          className={`py-2 px-3 rounded-xl text-sm font-bold border ${
+                            selectedAdminName === adm
+                              ? "bg-melon-400 text-white border-melon-400"
+                              : "bg-white text-gray-700 border-melon-200"
+                          }`}
+                        >
+                          {adm} 🌸
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">PIN</label>
+                    <input
+                      type="password"
+                      value={adminPin}
+                      onChange={(e) => setAdminPin(e.target.value)}
+                      placeholder="••••"
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-melon-200 focus:border-melon-400 focus:outline-none text-sm bg-white"
+                    />
+                  </div>
+                  {loginError && <p className="text-xs font-semibold text-red-600">{loginError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPendingAdminEmail(false); setAdminPin(""); setLoginError(""); }}
+                      className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold"
+                    >
+                      Kembali
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 rounded-xl bg-melon-500 text-white text-sm font-bold"
+                    >
+                      Masuk
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      if (!route) {
+        return (
+          <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto flex flex-col justify-center">
+            <div className="bg-white/95 backdrop-blur border-2 border-melon-200 rounded-3xl p-6 sm:p-8 shadow-xl">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-melon-100">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-rind-500">Jastip &amp; Handcarry</span>
+                  <h1 className="font-display text-2xl sm:text-3xl font-bold text-melon-500">{t.brand} 🍉☀️</h1>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {session.role === "admin"
+                      ? `Admin: ${session.adminName} (${session.email})`
+                      : `${t.yourCode}: `}
+                    {session.role === "customer" && (
+                      <span className="font-bold text-melon-500 bg-melon-50 px-2 py-0.5 rounded-lg border border-melon-200">
+                        {session.code}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {session.role !== "admin" && (
+                    <div className="flex gap-1 bg-melon-50 p-1 rounded-xl border border-melon-200">
+                      {["id", "en", "zh"].map((l) => (
+                        <button
+                          key={l}
+                          type="button"
+                          onClick={() => setLang(l)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${
+                            lang === l ? "bg-melon-400 text-white" : "text-gray-600"
+                          }`}
+                        >
+                          {l === "zh" ? "中文" : l}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="px-3.5 py-2 rounded-xl bg-melon-100 hover:bg-melon-200 text-melon-500 text-xs font-bold"
+                  >
+                    {t.logout}
+                  </button>
+                </div>
+              </div>
+
+              {issuedCodeBanner && session.role === "customer" && (
+                <div className="mt-4 p-4 rounded-2xl bg-rind-50 border border-rind-200 text-xs text-gray-800">
+                  <div className="font-bold text-rind-500 text-sm mb-1">
+                    {t.yourCode}: <span className="text-melon-500">{issuedCodeBanner}</span> 🎉
+                  </div>
+                  <p>{t.codeNote}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setRoute("china-indo"); setActiveTab("form"); }}
+                  className="text-left p-5 rounded-3xl bg-gradient-to-br from-melon-50 to-sun-50 hover:from-melon-100 hover:to-sun-100 border-2 border-melon-200 transition shadow-sm cursor-pointer"
+                >
+                  <div className="text-3xl mb-2">🇨🇳➡️🇮🇩</div>
+                  <div className="font-display font-bold text-lg text-gray-800">{t.routeChinaIndo}</div>
+                  <p className="text-xs text-gray-600 mt-1">{t.routeChinaIndoDesc}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setRoute("indo-china"); setActiveTab("form"); }}
+                  className="text-left p-5 rounded-3xl bg-gradient-to-br from-rind-50 to-sun-50 hover:from-rind-100 hover:to-sun-100 border-2 border-rind-200 transition shadow-sm cursor-pointer"
+                >
+                  <div className="text-3xl mb-2">🇮🇩➡️🇨🇳</div>
+                  <div className="font-display font-bold text-lg text-gray-800">{t.routeIndoChina}</div>
+                  <p className="text-xs text-gray-600 mt-1">{t.routeIndoChinaDesc}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRoute("usa-cargo")}
+                  className="text-left p-5 rounded-3xl bg-gradient-to-br from-sun-50 to-melon-50 hover:from-sun-100 hover:to-melon-100 border-2 border-sun-200 transition shadow-sm cursor-pointer"
+                >
+                  <div className="text-3xl mb-2">🇺🇸✈️🍉</div>
+                  <div className="font-display font-bold text-lg text-gray-800">{t.routeUsa}</div>
+                  <p className="text-xs text-gray-600 mt-1">{t.routeUsaDesc}</p>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (route === "usa-cargo") {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white/95 border-2 border-sun-200 rounded-3xl p-8 max-w-lg w-full text-center shadow-xl">
+              <div className="text-5xl mb-3">🇺🇸🍉☀️</div>
+              <h2 className="font-display text-2xl font-bold text-melon-500 mb-2">{t.routeUsa}</h2>
+              <p className="whitespace-pre-line text-sm text-gray-700 leading-relaxed bg-sun-50 p-4 rounded-2xl border border-sun-200">
+                {t.usaComingSoon}
+              </p>
+              <button
+                type="button"
+                onClick={() => setRoute(null)}
+                className="mt-6 px-6 py-2.5 rounded-2xl bg-melon-400 text-white font-display font-semibold text-sm cursor-pointer"
+              >
+                {t.backRoute}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      const routeTitle = route === "china-indo" ? t.routeChinaIndo : t.routeIndoChina;
+      const currentTripCfg = db.tripConfig[route] || { lastReceive: "", departDate: "", defaultRate: 180, yuanRate: 2200 };
+
+      return (
+        <div className="min-h-screen pb-14">
+          {/* Top Bar */}
+          <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b-2 border-melon-100 px-4 py-3">
+            <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setRoute(null)}
+                  className="px-3 py-1.5 rounded-xl bg-melon-50 hover:bg-melon-100 border border-melon-200 text-xs font-bold text-melon-500 cursor-pointer"
+                >
+                  ← {t.backRoute}
+                </button>
+                <div>
+                  <div className="font-display font-bold text-base sm:text-lg text-melon-500 leading-tight">
+                    {t.brand} • <span className="text-rind-500">{routeTitle}</span> 🍉
+                  </div>
+                  <div className="text-[11px] text-gray-600">
+                    {session.role === "admin" ? `Admin: ${session.adminName}` : `Customer: ${session.customerName || session.code} (${session.code})`}
+                    {currentTripCfg.lastReceive && ` • Last Terima: ${currentTripCfg.lastReceive} • Berangkat: ${currentTripCfg.departDate}`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {session.role !== "admin" && (
+                  <div className="flex gap-1 bg-melon-50 p-1 rounded-xl border border-melon-200">
+                    {["id", "en", "zh"].map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => setLang(l)}
+                        className={`px-2 py-0.5 rounded-lg text-xs font-bold uppercase ${
+                          lang === l ? "bg-melon-400 text-white" : "text-gray-600"
+                        }`}
+                      >
+                        {l === "zh" ? "中文" : l}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {session.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSyncModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-sun-100 hover:bg-sun-200 text-amber-900 text-xs font-bold border border-sun-300 cursor-pointer"
+                  >
+                    ☁️ Sync &amp; Backup
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-3 py-1.5 rounded-xl bg-melon-100 text-melon-500 text-xs font-bold cursor-pointer"
+                >
+                  {t.logout}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Navigation Tabs */}
+          <div className="max-w-7xl mx-auto px-4 pt-4">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "form", label: `📝 ${t.navForm}` },
+                { id: "resi", label: `📦 ${t.navResi} (${missingResiList.length})` },
+                { id: "rekap", label: `📊 ${t.navRekap}` },
+                { id: "billing", label: `🧾 ${t.navBilling}` },
+                ...(session.role === "admin" ? [{ id: "trip", label: `🗓️ ${t.navTrip}` }] : []),
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                    activeTab === tab.id
+                      ? "bg-melon-400 text-white shadow"
+                      : "bg-white/90 text-gray-700 border border-melon-200 hover:bg-melon-50"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <main className="max-w-7xl mx-auto px-4 pt-5">
+            {/* TAB 1: FORM */}
+            {activeTab === "form" && (
+              <form onSubmit={handleFormSubmit} className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-6">
+                <div className="flex items-center justify-between border-b border-melon-100 pb-3">
+                  <h2 className="font-display text-xl font-bold text-melon-500">{t.navForm} ({routeTitle})</h2>
+                  <span className="text-xs px-3 py-1 rounded-full bg-rind-100 text-rind-500 font-bold">
+                    {route === "indo-china" ? "Gudang Asal: Depok" : "Asal: China"}
+                  </span>
+                </div>
+
+                {formToast && (
+                  <div className="p-3.5 rounded-2xl bg-rind-100 border border-rind-200 text-sm font-bold text-rind-500">
+                    {formToast}
+                  </div>
+                )}
+                {formError && (
+                  <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-sm font-bold text-red-600">
+                    {formError}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.customerName} *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.customerName}
+                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-melon-200 text-sm bg-melon-50/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.phone}</label>
+                    <input
+                      type="text"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-melon-200 text-sm bg-melon-50/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.socialId}</label>
+                    <input
+                      type="text"
+                      value={formData.socialId}
+                      onChange={(e) => setFormData({ ...formData, socialId: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-melon-200 text-sm bg-melon-50/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.uploaderName}</label>
+                    <input
+                      type="text"
+                      value={formData.uploaderName}
+                      onChange={(e) => setFormData({ ...formData, uploaderName: e.target.value })}
+                      placeholder={actorLabel}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-melon-200 text-sm bg-melon-50/30"
+                    />
+                  </div>
+                </div>
+
+                {route === "indo-china" && (
+                  <div className="p-4 rounded-2xl bg-sun-50/80 border border-sun-200 space-y-3">
+                    <div className="font-display font-bold text-sm text-amber-900">Detail Penerima di China</div>
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.chinaRecipientName}</label>
+                        <input
+                          type="text"
+                          value={formData.chinaRecipientName}
+                          onChange={(e) => setFormData({ ...formData, chinaRecipientName: e.target.value })}
+                          className="w-full px-3.5 py-2 rounded-xl border border-sun-200 text-sm bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.chinaRecipientPhone}</label>
+                        <input
+                          type="text"
+                          value={formData.chinaRecipientPhone}
+                          onChange={(e) => setFormData({ ...formData, chinaRecipientPhone: e.target.value })}
+                          className="w-full px-3.5 py-2 rounded-xl border border-sun-200 text-sm bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.chinaRecipientAddress}</label>
+                        <textarea
+                          rows={2}
+                          value={formData.chinaRecipientAddress}
+                          onChange={(e) => setFormData({ ...formData, chinaRecipientAddress: e.target.value })}
+                          className="w-full px-3.5 py-2 rounded-xl border border-sun-200 text-sm bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t.resiNumber}</label>
+                  <input
+                    type="text"
+                    value={formData.resi}
+                    onChange={(e) => setFormData({ ...formData, resi: e.target.value })}
+                    placeholder="TB... / SPX... / JNE..."
+                    className="w-full sm:w-96 px-3.5 py-2.5 rounded-xl border border-melon-200 text-sm bg-melon-50/30"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">{t.resiOptionalHint}</p>
+                  {duplicateResiMatch && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-sun-100 border border-sun-300 text-xs font-bold text-amber-900">
+                      ⚠️ {t.dupResiWarning}
+                    </div>
+                  )}
+                </div>
+
+                {/* Items */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-lg font-bold text-gray-800">{t.itemsTitle}</h3>
+                    <button
+                      type="button"
+                      onClick={addNewItemRow}
+                      className="px-4 py-2 rounded-xl bg-rind-400 hover:bg-rind-500 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {t.addItem}
+                    </button>
+                  </div>
+
+                  {formData.items.map((item, idx) => (
+                    <div key={item.id} className="p-4 rounded-2xl bg-melon-50/50 border-2 border-melon-100 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-display font-bold text-sm text-melon-500">Item #{idx + 1}</span>
+                        {formData.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItemRow(idx)}
+                            className="text-xs font-bold text-red-500 hover:underline cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.itemName}</label>
+                          <input
+                            type="text"
+                            required
+                            value={item.name}
+                            onChange={(e) => updateItemRow(idx, { name: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.itemQty}</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.qty}
+                            onChange={(e) => updateItemRow(idx, { qty: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1.5">{t.itemCategory}</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { key: "goods", label: t.catGoods },
+                            { key: "paperbased", label: t.catPaperbased },
+                            { key: "electronic", label: t.catElectronic },
+                            { key: "liquid", label: t.catLiquid },
+                            ...(route === "indo-china" ? [{ key: "snack", label: t.catSnack }] : []),
+                          ].map((cat) => (
+                            <button
+                              key={cat.key}
+                              type="button"
+                              onClick={() => updateItemRow(idx, { category: cat.key, snackAck: false })}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
+                                item.category === cat.key
+                                  ? "bg-melon-400 text-white border-melon-400"
+                                  : "bg-white text-gray-700 border-melon-200"
+                              }`}
+                            >
+                              {cat.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {item.category === "goods" && (
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.goodsHandling}</label>
+                          <select
+                            value={item.goodsHandling}
+                            onChange={(e) => updateItemRow(idx, { goodsHandling: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                          >
+                            {t.handlingOptions.map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {item.category === "paperbased" && (
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.paperOption}</label>
+                          <select
+                            value={item.paperOption}
+                            onChange={(e) => updateItemRow(idx, { paperOption: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                          >
+                            {t.paperOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {item.category === "liquid" && (
+                        <div className="max-w-xs">
+                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.liquidMl}</label>
+                          <input
+                            type="number"
+                            value={item.liquidMl}
+                            onChange={(e) => updateItemRow(idx, { liquidMl: e.target.value })}
+                            placeholder="cth: 100"
+                            className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                          />
+                        </div>
+                      )}
+
+                      {item.category === "electronic" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">{t.elecType}</label>
+                            <select
+                              value={item.elecType}
+                              onChange={(e) => updateItemRow(idx, { elecType: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                            >
+                              {t.elecTypes.map((et) => (
+                                <option key={et} value={et}>{et}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">{t.elecMah}</label>
+                            <input
+                              type="text"
+                              value={item.elecMah}
+                              onChange={(e) => updateItemRow(idx, { elecMah: e.target.value })}
+                              placeholder="cth: 10000 mAh"
+                              className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {route === "indo-china" && item.category === "snack" && (
+                        <div className="p-4 rounded-2xl bg-sun-100/90 border-2 border-sun-300 space-y-2.5">
+                          <div className="font-display font-bold text-sm text-amber-950">⚠️ {t.snackCautionTitle}</div>
+                          <ul className="list-disc pl-5 text-xs text-amber-950 space-y-1">
+                            {t.snackCautionPoints.map((pt, i) => (
+                              <li key={i}>{pt}</li>
+                            ))}
+                          </ul>
+                          <label className="flex items-center gap-2 pt-1 text-xs font-bold text-amber-950 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(item.snackAck)}
+                              onChange={(e) => updateItemRow(idx, { snackAck: e.target.checked })}
+                              className="w-4 h-4 accent-melon-500"
+                            />
+                            <span>{t.snackAckLabel}</span>
+                          </label>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.uploadItemPhoto}</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleItemPhotoUpload(idx, e.target.files)}
+                          className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:bg-melon-100 file:text-melon-500 file:font-bold"
+                        />
+                        {(item.photos || []).length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {item.photos.map((src, pIdx) => (
+                              <img
+                                key={pIdx}
+                                src={src}
+                                alt={`foto-${pIdx}`}
+                                className="w-16 h-16 object-cover rounded-xl border border-melon-200"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-gradient-to-r from-melon-400 to-melon-500 text-white font-display font-bold text-base shadow-md cursor-pointer"
+                >
+                  {t.submitForm} ✨
+                </button>
+              </form>
+            )}
+
+            {/* TAB 2: ISI RESI BARANG */}
+            {activeTab === "resi" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4">
+                <h2 className="font-display text-xl font-bold text-melon-500">{t.noResiYetTitle}</h2>
+                {missingResiList.length === 0 ? (
+                  <p className="text-sm text-gray-600 bg-melon-50 p-4 rounded-2xl">{t.noResiYetEmpty}</p>
+                ) : (
+                  <div className="space-y-3">
+                    {missingResiList.map((sub) => (
+                      <div key={sub.id} className="p-4 rounded-2xl bg-melon-50/60 border border-melon-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="font-bold text-sm text-gray-800">
+                            {sub.customerName} <span className="text-xs text-gray-500">({sub.customerCode})</span>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {(sub.items || []).map((it) => `${it.name} x${it.qty}`).join(", ")}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={resiDrafts[sub.id] || ""}
+                            onChange={(e) => setResiDrafts((prev) => ({ ...prev, [sub.id]: e.target.value }))}
+                            placeholder={t.resiNumber}
+                            className="px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveMissingResi(sub.id)}
+                            className="px-4 py-2 rounded-xl bg-rind-500 text-white text-xs font-bold cursor-pointer"
+                          >
+                            {t.saveResi}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: REKAPAN & TRACKING (SPREADSHEET STYLE) */}
+            {activeTab === "rekap" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-4 sm:p-6 shadow-lg space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-display text-xl font-bold text-melon-500">{t.navRekap}</h2>
+                  {session.role === "admin" && (
+                    <button
+                      type="button"
+                      onClick={exportCsv}
+                      className="px-3.5 py-2 rounded-xl bg-rind-100 hover:bg-rind-200 text-rind-500 text-xs font-bold cursor-pointer"
+                    >
+                      ⬇️ Export CSV
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter & Sort Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 bg-melon-50/70 p-3.5 rounded-2xl border border-melon-100">
+                  <input
+                    type="text"
+                    value={searchResi}
+                    onChange={(e) => setSearchResi(e.target.value)}
+                    placeholder="🔍 Cari resi / nama / barang..."
+                    className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                  />
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                  >
+                    <option value="all">{t.itemCategory}: {t.filterAll}</option>
+                    <option value="goods">{t.catGoods}</option>
+                    <option value="paperbased">{t.catPaperbased}</option>
+                    <option value="electronic">{t.catElectronic}</option>
+                    <option value="liquid">{t.catLiquid}</option>
+                    {route === "indo-china" && <option value="snack">{t.catSnack}</option>}
+                  </select>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                  >
+                    <option value="all">Status: {t.filterAll}</option>
+                    {STATUS_LIST.map((st) => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                  >
+                    <option value="date">{t.sortBy}: {t.sortDate}</option>
+                    <option value="alpha">{t.sortBy}: {t.sortAlpha}</option>
+                    {route === "china-indo" && session.role === "admin" && (
+                      <option value="city">{t.sortBy}: {t.sortCity}</option>
+                    )}
+                  </select>
+
+                  {session.role === "admin" && (
+                    <>
+                      <select
+                        value={filterCustomer}
+                        onChange={(e) => setFilterCustomer(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                      >
+                        <option value="all">Customer: Semua</option>
+                        {uniqueCustomers.map((cn) => <option key={cn} value={cn}>{cn}</option>)}
+                      </select>
+                      <select
+                        value={filterUploader}
+                        onChange={(e) => setFilterUploader(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                      >
+                        <option value="all">Pengupload: Semua</option>
+                        {uniqueUploaders.map((up) => <option key={up} value={up}>{up}</option>)}
+                      </select>
+                      {route === "china-indo" && (
+                        <select
+                          value={filterCity}
+                          onChange={(e) => setFilterCity(e.target.value)}
+                          className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                        >
+                          <option value="all">Kota: Semua</option>
+                          {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      )}
+                      <select
+                        value={tripFilter}
+                        onChange={(e) => setTripFilter(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-melon-200 text-xs bg-white"
+                      >
+                        <option value="all">Kloter: Semua</option>
+                        <option value="active">{t.tripActive}</option>
+                        <option value="next">{t.tripNext}</option>
+                      </select>
+                    </>
+                  )}
+                </div>
+
+                {/* Spreadsheet Table */}
+                <div className="overflow-x-auto sheet-scroll border border-melon-200 rounded-2xl">
+                  <table className="min-w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-melon-100 text-gray-800 font-bold">
+                        <th className="p-2.5 border border-melon-200 text-left">Customer / Pengupload</th>
+                        <th className="p-2.5 border border-melon-200 text-left">Resi</th>
+                        <th className="p-2.5 border border-melon-200 text-left">Barang &amp; Detail</th>
+                        <th className="p-2.5 border border-melon-200 text-left">Status &amp; Kloter</th>
+                        {route === "china-indo" && session.role === "admin" && (
+                          <th className="p-2.5 border border-melon-200 text-left">Kota</th>
+                        )}
+                        <th className="p-2.5 border border-melon-200 text-left">Sortir &amp; Resi Indo</th>
+                        <th className="p-2.5 border border-melon-200 text-left">Foto &amp; Catatan</th>
+                        <th className="p-2.5 border border-melon-200 text-left">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleSubmissions.map((sub) => {
+                        const locked = session.role === "customer" && LOCKED_STATUSES.includes(sub.status);
+                        const nextTrip = isNextTrip(sub, db.tripConfig);
+                        return (
+                          <tr key={sub.id} className="odd:bg-white even:bg-melon-50/30 align-top">
+                            <td className="p-2.5 border border-melon-100 min-w-[160px]">
+                              <div className="font-bold text-gray-800">{sub.customerName}</div>
+                              <div className="text-[11px] text-gray-500">{sub.customerCode} • {sub.phone}</div>
+                              <div className="text-[11px] text-gray-600 mt-0.5">Upload: {sub.uploaderName}</div>
+                              {route === "indo-china" && sub.chinaRecipient?.address && (
+                                <div className="mt-1.5 p-2 rounded-lg bg-sun-50 border border-sun-200 text-[11px] space-y-0.5">
+                                  <div><strong>Penerima:</strong> {sub.chinaRecipient.name}</div>
+                                  <div><strong>HP:</strong> {sub.chinaRecipient.phone}</div>
+                                  <div><strong>Alamat:</strong> {sub.chinaRecipient.address}</div>
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[130px]">
+                              <div className="font-bold text-melon-500">{sub.resi || "(Belum ada resi)"}</div>
+                              {(sub.resiHistory || []).length > 0 && (
+                                <div className="text-[10px] text-gray-500 mt-1">
+                                  Riwayat: {sub.resiHistory.map((h) => `${h.from}→${h.to}`).join(", ")}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[220px]">
+                              {(sub.items || []).map((it) => (
+                                <div key={it.id} className="mb-2 last:mb-0 pb-1.5 border-b last:border-b-0 border-melon-100">
+                                  <div className="font-bold text-gray-800">{it.name} <span className="text-melon-500">x{it.qty}</span></div>
+                                  <div className="text-[11px] text-gray-600">Kategori: {it.category}</div>
+                                  {it.category === "goods" && it.goodsHandling && (
+                                    <div className="text-[11px] text-gray-600">Kemasan: {it.goodsHandling}</div>
+                                  )}
+                                  {it.category === "paperbased" && it.paperOption && (
+                                    <div className="text-[11px] text-gray-600">Paperbased: {it.paperOption}</div>
+                                  )}
+                                  {it.category === "liquid" && it.liquidMl && (
+                                    <div className="text-[11px] text-gray-600">Volume: {it.liquidMl} ml</div>
+                                  )}
+                                  {it.category === "electronic" && (
+                                    <div className="text-[11px] text-gray-600">
+                                      {it.elecType} {it.elecMah ? `(${it.elecMah})` : ""}
+                                    </div>
+                                  )}
+                                  {route === "indo-china" && it.category === "snack" && (
+                                    <div className="mt-1 p-1.5 rounded bg-sun-100 text-[10px] text-amber-950">
+                                      <strong>Caution Snack:</strong> {t.snackCautionPoints.join(" ")}
+                                    </div>
+                                  )}
+                                  {(it.photos || []).length > 0 && (
+                                    <div className="flex gap-1 mt-1">
+                                      {it.photos.map((src, i) => (
+                                        <img key={i} src={src} alt="item" className="w-10 h-10 object-cover rounded border" />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[150px]">
+                              {session.role === "admin" ? (
+                                <select
+                                  value={sub.status}
+                                  onChange={(e) => updateSubmission(sub.id, { status: e.target.value })}
+                                  className="w-full px-2 py-1 rounded-lg border border-melon-200 text-xs bg-white font-semibold"
+                                >
+                                  {STATUS_LIST.map((st) => <option key={st} value={st}>{st}</option>)}
+                                </select>
+                              ) : (
+                                <span className="inline-block px-2 py-0.5 rounded-full bg-melon-100 text-melon-500 font-bold text-[11px]">
+                                  {sub.status}
+                                </span>
+                              )}
+
+                              <div className="mt-1.5">
+                                {session.role === "admin" ? (
+                                  <select
+                                    value={sub.tripOverride || "auto"}
+                                    onChange={(e) => updateSubmission(sub.id, { tripOverride: e.target.value })}
+                                    className="w-full px-2 py-1 rounded-lg border border-sun-200 text-[11px] bg-sun-50"
+                                  >
+                                    <option value="auto">Otomatis ({nextTrip ? t.tripNext : t.tripActive})</option>
+                                    <option value="ikut trip ini">ikut trip ini</option>
+                                    <option value="ikut next trip">ikut next trip</option>
+                                  </select>
+                                ) : (
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    nextTrip ? "bg-sun-100 text-amber-900" : "bg-rind-100 text-rind-500"
+                                  }`}>
+                                    {nextTrip ? t.tripNext : t.tripActive}
+                                  </span>
+                                )}
+                              </div>
+
+                              {sub.returInfo && (
+                                <div className="mt-1.5 p-1.5 rounded bg-red-50 border border-red-200 text-[10px] text-red-700">
+                                  <strong>{sub.returInfo.type}</strong>
+                                  {sub.returInfo.newResi && <div>Resi baru: {sub.returInfo.newResi}</div>}
+                                  {sub.returInfo.reason && <div>Ket: {sub.returInfo.reason}</div>}
+                                </div>
+                              )}
+                            </td>
+
+                            {route === "china-indo" && session.role === "admin" && (
+                              <td className="p-2.5 border border-melon-100 min-w-[110px]">
+                                <select
+                                  value={sub.city || "Shanghai"}
+                                  onChange={(e) => updateSubmission(sub.id, { city: e.target.value })}
+                                  className="w-full px-2 py-1 rounded-lg border border-melon-200 text-xs bg-white"
+                                >
+                                  {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              </td>
+                            )}
+
+                            <td className="p-2.5 border border-melon-100 min-w-[140px]">
+                              <label className="flex items-center gap-1.5 font-semibold text-gray-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  disabled={session.role !== "admin"}
+                                  checked={Boolean(sub.sortedChecked)}
+                                  onChange={(e) => updateSubmission(sub.id, { sortedChecked: e.target.checked })}
+                                  className="accent-rind-500"
+                                />
+                                <span>Sudah Sortir</span>
+                              </label>
+                              <div className="mt-1.5">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="text"
+                                    value={sub.indoResi || ""}
+                                    onChange={(e) => updateSubmission(sub.id, { indoResi: e.target.value })}
+                                    placeholder="Resi Indo..."
+                                    className="w-full px-2 py-1 rounded-lg border border-melon-200 text-[11px] bg-white"
+                                  />
+                                ) : (
+                                  <div className="text-[11px] text-gray-600">Resi Indo: {sub.indoResi || "-"}</div>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[180px]">
+                              {sub.shortageNote && (
+                                <div className="mb-1.5 px-2 py-1 rounded-lg bg-sun-100 border border-sun-300 text-[10px] font-bold text-amber-950">
+                                  ⚠️ Ada Catatan/Komplain: {sub.shortageNote}
+                                </div>
+                              )}
+                              {session.role === "admin" && (
+                                <input
+                                  type="text"
+                                  value={sub.shortageNote || ""}
+                                  onChange={(e) => updateSubmission(sub.id, { shortageNote: e.target.value })}
+                                  placeholder="Ket. barang kurang / catatan..."
+                                  className="w-full px-2 py-1 rounded-lg border border-melon-200 text-[11px] bg-white mb-1.5"
+                                />
+                              )}
+
+                              {/* Stage Photos based on route & role */}
+                              {route === "china-indo" ? (
+                                <div className="space-y-1">
+                                  {[
+                                    { key: "arrival", label: "Foto Datang", custCanSee: true },
+                                    ...(session.role === "admin" ? [{ key: "scale", label: "Foto Timbangan", custCanSee: false }] : []),
+                                    { key: "indoItem", label: "Barang di Indo", custCanSee: true },
+                                    { key: "indoPack", label: "Packing di Indo", custCanSee: true },
+                                  ].map((st) => (
+                                    <div key={st.key}>
+                                      <div className="text-[10px] font-semibold text-gray-600">
+                                        {st.label} ({(sub.photos?.[st.key] || []).length})
+                                      </div>
+                                      {session.role === "admin" && (
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          multiple
+                                          onChange={(e) => handleAdminStagePhotoUpload(sub.id, st.key, e.target.files)}
+                                          className="text-[10px] w-full"
+                                        />
+                                      )}
+                                      <div className="flex gap-1 mt-0.5">
+                                        {(sub.photos?.[st.key] || []).map((src, i) => (
+                                          <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border" />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  {[
+                                    { key: "arrival", label: "Foto Datang" },
+                                    { key: "scale", label: "Foto Timbangan" },
+                                    ...(session.role === "admin" ? [{ key: "koperPack", label: "Foto Packing Koper" }] : []),
+                                  ].map((st) => (
+                                    <div key={st.key}>
+                                      <div className="text-[10px] font-semibold text-gray-600">
+                                        {st.label} ({(sub.photos?.[st.key] || []).length})
+                                      </div>
+                                      {session.role === "admin" && (
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          multiple
+                                          onChange={(e) => handleAdminStagePhotoUpload(sub.id, st.key, e.target.files)}
+                                          className="text-[10px] w-full"
+                                        />
+                                      )}
+                                      <div className="flex gap-1 mt-0.5">
+                                        {(sub.photos?.[st.key] || []).map((src, i) => (
+                                          <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border" />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {sub.lastAudit && (
+                                <div className="text-[10px] text-gray-400 mt-1.5">{sub.lastAudit}</div>
+                              )}
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[130px] space-y-1.5">
+                              {locked && (
+                                <div className="text-[10px] text-amber-800 bg-sun-50 p-1.5 rounded border border-sun-200">
+                                  🔒 {t.lockedNotice}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => { setChangeResiModal(sub.id); setNewResiInput(sub.resi || ""); }}
+                                className="w-full py-1 px-2 rounded-lg bg-melon-100 hover:bg-melon-200 text-melon-500 font-bold text-[11px] cursor-pointer"
+                              >
+                                {t.changeResi}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReturModal(sub.id);
+                                  setReturType(sub.returInfo?.type || "Retur CO Ulang");
+                                  setReturNewResi(sub.returInfo?.newResi || "");
+                                  setReturReason(sub.returInfo?.reason || "");
+                                }}
+                                className="w-full py-1 px-2 rounded-lg bg-sun-100 hover:bg-sun-200 text-amber-900 font-bold text-[11px] cursor-pointer"
+                              >
+                                {t.requestRetur}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: SHEET TAGIHAN */}
+            {activeTab === "billing" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-4 sm:p-6 shadow-lg space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-display text-xl font-bold text-melon-500">{t.navBilling}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBillingGroupByCustomer(true)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                        billingGroupByCustomer ? "bg-melon-400 text-white" : "bg-melon-50 text-gray-700 border border-melon-200"
+                      }`}
+                    >
+                      Gabung per Customer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBillingGroupByCustomer(false)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                        !billingGroupByCustomer ? "bg-melon-400 text-white" : "bg-melon-50 text-gray-700 border border-melon-200"
+                      }`}
+                    >
+                      Per Barang
+                    </button>
+                  </div>
+                </div>
+
+                {billingGroupByCustomer ? (
+                  <div className="overflow-x-auto sheet-scroll border border-melon-200 rounded-2xl">
+                    <table className="min-w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-rind-100 text-gray-800 font-bold">
+                          <th className="p-2.5 border border-melon-200 text-left">Customer</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Jumlah Resi</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Total Berat (g)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Total Tagihan</th>
+                          <th className="p-2.5 border border-melon-200 text-left">DP / Dibayar</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Sisa Tagihan</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Salin Struk</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aggregatedBillingByCustomer.map((grp) => {
+                          const yRate = Number(db.tripConfig["indo-china"]?.yuanRate || 2200);
+                          const isCny = route === "indo-china" && grp.currency === "CNY";
+                          const fmtAmt = (idrVal) =>
+                            isCny ? `¥ ${(idrVal / yRate).toFixed(2)}` : formatIdr(idrVal);
+
+                          const receiptText = [
+                            `WH By Markyours_here (${routeTitle})`,
+                            `Customer: ${grp.customerName} (${grp.customerCode})`,
+                            ...grp.subs.map(({ sub, calc }) =>
+                              `- ${sub.resi || "No Resi"} | ${(sub.items || []).map((i) => i.name).join(", ")} | ${calc.totalGrams}g | ${formatIdr(calc.totalIdr)}`
+                            ),
+                            `Total Berat: ${grp.totalGrams}g`,
+                            `Total Tagihan: ${fmtAmt(grp.totalIdr)} (${formatIdr(grp.totalIdr)})`,
+                            `DP / Dibayar: ${formatIdr(grp.paid)}`,
+                            `Sisa Tagihan: ${formatIdr(grp.remaining)}`,
+                          ].join("\n");
+
+                          return (
+                            <tr key={grp.key} className="odd:bg-white even:bg-melon-50/30">
+                              <td className="p-2.5 border border-melon-100 font-bold">
+                                {grp.customerName} <span className="text-[11px] text-gray-500">({grp.customerCode})</span>
+                              </td>
+                              <td className="p-2.5 border border-melon-100">{grp.resiCount}</td>
+                              <td className="p-2.5 border border-melon-100">{grp.totalGrams} g</td>
+                              <td className="p-2.5 border border-melon-100 font-bold text-melon-500">
+                                {fmtAmt(grp.totalIdr)}
+                                {isCny && <div className="text-[10px] text-gray-500">({formatIdr(grp.totalIdr)})</div>}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">{formatIdr(grp.paid)}</td>
+                              <td className="p-2.5 border border-melon-100 font-bold text-amber-800">{formatIdr(grp.remaining)}</td>
+                              <td className="p-2.5 border border-melon-100">
+                                <button
+                                  type="button"
+                                  onClick={() => copyReceiptText(grp.key, receiptText)}
+                                  className="px-3 py-1 rounded-lg bg-melon-100 hover:bg-melon-200 text-melon-500 font-bold cursor-pointer"
+                                >
+                                  {copiedKey === grp.key ? t.copied : t.copyReceipt}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto sheet-scroll border border-melon-200 rounded-2xl">
+                    <table className="min-w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-melon-100 text-gray-800 font-bold">
+                          <th className="p-2.5 border border-melon-200 text-left">Customer / Resi</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Berat (g)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Tarif/g (IDR)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Biaya Tambahan</th>
+                          {route === "indo-china" && (
+                            <th className="p-2.5 border border-melon-200 text-left">Mata Uang</th>
+                          )}
+                          <th className="p-2.5 border border-melon-200 text-left">Total Tagihan</th>
+                          <th className="p-2.5 border border-melon-200 text-left">DP / Dibayar</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Sisa &amp; Status Bayar</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleSubmissions.map((sub) => {
+                          const calc = computeSubmissionTotal(sub, db.tripConfig);
+                          const yRate = Number(db.tripConfig["indo-china"]?.yuanRate || 2200);
+                          return (
+                            <tr key={sub.id} className="odd:bg-white even:bg-melon-50/30">
+                              <td className="p-2.5 border border-melon-100">
+                                <div className="font-bold">{sub.customerName}</div>
+                                <div className="text-[11px] text-gray-500">{sub.resi || "(No Resi)"}</div>
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.items?.[0]?.weightGram ?? 0}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value || 0);
+                                      updateSubmission(sub.id, (prev) => ({
+                                        items: (prev.items || []).map((it, idx) =>
+                                          idx === 0 ? { ...it, weightGram: val } : it
+                                        ),
+                                      }));
+                                    }}
+                                    className="w-20 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  `${calc.totalGrams} g`
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.ratePerGram ?? calc.rate}
+                                    onChange={(e) => updateSubmission(sub.id, { ratePerGram: Number(e.target.value || 0) })}
+                                    className="w-20 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  formatIdr(calc.rate)
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.extraFee ?? 0}
+                                    onChange={(e) => updateSubmission(sub.id, { extraFee: Number(e.target.value || 0) })}
+                                    className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  formatIdr(calc.extra)
+                                )}
+                              </td>
+                              {route === "indo-china" && (
+                                <td className="p-2.5 border border-melon-100">
+                                  {session.role === "admin" ? (
+                                    <select
+                                      value={sub.currency || "IDR"}
+                                      onChange={(e) => updateSubmission(sub.id, { currency: e.target.value })}
+                                      className="px-2 py-1 rounded border border-melon-200 bg-white"
+                                    >
+                                      <option value="IDR">IDR</option>
+                                      <option value="CNY">CNY (Yuan)</option>
+                                    </select>
+                                  ) : (
+                                    sub.currency || "IDR"
+                                  )}
+                                </td>
+                              )}
+                              <td className="p-2.5 border border-melon-100 font-bold text-melon-500">
+                                {route === "indo-china" && sub.currency === "CNY"
+                                  ? `¥ ${(calc.totalIdr / yRate).toFixed(2)}`
+                                  : formatIdr(calc.totalIdr)}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.paidAmount ?? 0}
+                                    onChange={(e) => updateSubmission(sub.id, { paidAmount: Number(e.target.value || 0) })}
+                                    className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  formatIdr(calc.paid)
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                <div className="font-bold">{formatIdr(calc.remaining)}</div>
+                                {session.role === "admin" ? (
+                                  <select
+                                    value={sub.paymentStatus || "Belum Lunas"}
+                                    onChange={(e) => updateSubmission(sub.id, { paymentStatus: e.target.value })}
+                                    className="mt-1 px-2 py-0.5 rounded border border-melon-200 bg-white text-[11px]"
+                                  >
+                                    <option value="Belum Lunas">Belum Lunas</option>
+                                    <option value="DP">DP</option>
+                                    <option value="Lunas">Lunas</option>
+                                  </select>
+                                ) : (
+                                  <span className="text-[11px] text-gray-600">{sub.paymentStatus}</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: PENGATURAN KLOTER (ADMIN ONLY) */}
+            {activeTab === "trip" && session.role === "admin" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4 max-w-xl">
+                <h2 className="font-display text-xl font-bold text-melon-500">{t.navTrip} ({routeTitle})</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Last Terima</label>
+                    <input
+                      type="date"
+                      value={currentTripCfg.lastReceive || ""}
+                      onChange={(e) =>
+                        setDb((prev) => ({
+                          ...prev,
+                          tripConfig: {
+                            ...prev.tripConfig,
+                            [route]: { ...prev.tripConfig[route], lastReceive: e.target.value },
+                          },
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Berangkat</label>
+                    <input
+                      type="date"
+                      value={currentTripCfg.departDate || ""}
+                      onChange={(e) =>
+                        setDb((prev) => ({
+                          ...prev,
+                          tripConfig: {
+                            ...prev.tripConfig,
+                            [route]: { ...prev.tripConfig[route], departDate: e.target.value },
+                          },
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tarif Default / gram (IDR)</label>
+                    <input
+                      type="number"
+                      value={currentTripCfg.defaultRate ?? 180}
+                      onChange={(e) =>
+                        setDb((prev) => ({
+                          ...prev,
+                          tripConfig: {
+                            ...prev.tripConfig,
+                            [route]: { ...prev.tripConfig[route], defaultRate: Number(e.target.value || 0) },
+                          },
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                    />
+                  </div>
+                  {route === "indo-china" && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Kurs Yuan (1 CNY = ... IDR)</label>
+                      <input
+                        type="number"
+                        value={currentTripCfg.yuanRate ?? 2200}
+                        onChange={(e) =>
+                          setDb((prev) => ({
+                            ...prev,
+                            tripConfig: {
+                              ...prev.tripConfig,
+                              [route]: { ...prev.tripConfig[route], yuanRate: Number(e.target.value || 1) },
+                            },
+                          }))
+                        }
+                        className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Modal Ganti Resi */}
+          {changeResiModal && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-2 border-melon-200 space-y-4">
+                <h3 className="font-display text-lg font-bold text-melon-500">{t.changeResi}</h3>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">{t.oldResi}</label>
+                  <div className="px-3 py-2 rounded-xl bg-gray-100 text-xs font-semibold">
+                    {db.submissions.find((s) => s.id === changeResiModal)?.resi || "(Kosong)"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t.newResi}</label>
+                  <input
+                    type="text"
+                    value={newResiInput}
+                    onChange={(e) => setNewResiInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChangeResiModal(null)}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-xs font-bold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmChangeResi}
+                    className="px-4 py-2 rounded-xl bg-melon-400 text-white text-xs font-bold"
+                  >
+                    {t.saveResi}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Retur */}
+          {returModal && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-2 border-melon-200 space-y-4">
+                <h3 className="font-display text-lg font-bold text-melon-500">{t.requestRetur}</h3>
+                <div className="flex gap-2">
+                  {["Retur CO Ulang", "Retur & Refund"].map((rt) => (
+                    <button
+                      key={rt}
+                      type="button"
+                      onClick={() => setReturType(rt)}
+                      className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold border ${
+                        returType === rt ? "bg-melon-400 text-white border-melon-400" : "bg-white border-melon-200"
+                      }`}
+                    >
+                      {rt}
+                    </button>
+                  ))}
+                </div>
+                {returType === "Retur CO Ulang" && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.returNewResi}</label>
+                    <input
+                      type="text"
+                      value={returNewResi}
+                      onChange={(e) => setReturNewResi(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t.returReason}</label>
+                  <textarea
+                    rows={2}
+                    value={returReason}
+                    onChange={(e) => setReturReason(e.target.value)}
+                    placeholder={returType === "Retur & Refund" ? "Keterangan tidak jadi..." : "Catatan retur..."}
+                    className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReturModal(null)}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-xs font-bold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmRetur}
+                    className="px-4 py-2 rounded-xl bg-melon-400 text-white text-xs font-bold"
+                  >
+                    {t.saveRetur}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Sync & Backup */}
+          {showSyncModal && session.role === "admin" && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full border-2 border-melon-200 space-y-4">
+                <h3 className="font-display text-lg font-bold text-melon-500">☁️ Sync &amp; Backup</h3>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={exportJsonBackup}
+                    className="flex-1 py-2 px-3 rounded-xl bg-rind-100 text-rind-500 text-xs font-bold cursor-pointer"
+                  >
+                    Download JSON
+                  </button>
+                  <label className="flex-1 py-2 px-3 rounded-xl bg-melon-100 text-melon-500 text-xs font-bold text-center cursor-pointer">
+                    Import JSON
+                    <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Firebase Config JSON</label>
+                  <textarea
+                    rows={4}
+                    value={fbConfigText}
+                    onChange={(e) => setFbConfigText(e.target.value)}
+                    placeholder='{"apiKey":"...","projectId":"..."}'
+                    className="w-full px-3 py-2 rounded-xl border border-melon-200 text-xs font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveFirebaseConfig}
+                    className="mt-2 w-full py-2 rounded-xl bg-melon-400 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Simpan Firebase Config
+                  </button>
+                </div>
+                {syncStatusMsg && <p className="text-xs font-semibold text-rind-500">{syncStatusMsg}</p>}
+                <button
+                  type="button"
+                  onClick={() => { setShowSyncModal(false); setSyncStatusMsg(""); }}
+                  className="w-full py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
