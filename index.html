@@ -156,6 +156,7 @@
         navRekap: "Rekapan & Tracking",
         navBilling: "Sheet Tagihan",
         navTrip: "Pengaturan Kloter",
+        navLogs: "Log Aktivitas",
         customerName: "Nama Customer",
         phone: "No. HP",
         socialId: "ID Line / TWT / IG",
@@ -231,6 +232,8 @@
         tripNext: "Ikut Next Trip",
         copyReceipt: "Salin Tagihan",
         copied: "Tersalin!",
+        activityTitle: "Riwayat Log Aktivitas",
+        viewAllLogs: "Lihat Semua Log",
       },
       en: {
         brand: "WH By Markyours_here",
@@ -261,6 +264,7 @@
         navRekap: "Summary & Tracking",
         navBilling: "Billing Sheet",
         navTrip: "Batch Settings",
+        navLogs: "Activity Logs",
         customerName: "Customer Name",
         phone: "Phone Number",
         socialId: "Line / TWT / IG ID",
@@ -336,6 +340,8 @@
         tripNext: "Next Trip",
         copyReceipt: "Copy Bill",
         copied: "Copied!",
+        activityTitle: "Activity Log History",
+        viewAllLogs: "View All Logs",
       },
       zh: {
         brand: "WH By Markyours_here",
@@ -366,6 +372,7 @@
         navRekap: "汇总与追踪",
         navBilling: "账单表格",
         navTrip: "批次设置",
+        navLogs: "操作日志",
         customerName: "客户姓名",
         phone: "联系电话",
         socialId: "Line / 推特 / IG 账号",
@@ -441,6 +448,8 @@
         tripNext: "顺延下批",
         copyReceipt: "复制账单",
         copied: "已复制！",
+        activityTitle: "操作日志记录",
+        viewAllLogs: "查看全部日志",
       }
     };
 
@@ -468,7 +477,64 @@
       return true;
     }
 
+    function createActivityLog({ action, actor, role, targetId, route, resi, customerName, customerCode, detail }) {
+      return {
+        id: "LOG-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        timestamp: new Date().toISOString(),
+        timeLabel: new Date().toLocaleString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        action, // "INPUT" | "UBAH" | "RESI" | "RETUR" | "HAPUS"
+        actor,
+        role,
+        targetId,
+        route: route || "",
+        resi: resi || "-",
+        customerName: customerName || "-",
+        customerCode: customerCode || "",
+        detail,
+      };
+    }
+
     function createInitialData() {
+      const baseLog1 = createActivityLog({
+        action: "INPUT",
+        actor: "Rachel Tan",
+        role: "customer",
+        targetId: "SUB-1001",
+        route: "china-indo",
+        resi: "TB99887766",
+        customerName: "Rachel Tan",
+        customerCode: "WM-2104",
+        detail: "Input awal 1 item (Photocard Binder A5 x2)",
+      });
+      const baseLog2 = createActivityLog({
+        action: "UBAH",
+        actor: "Elsa",
+        role: "admin",
+        targetId: "SUB-1001",
+        route: "china-indo",
+        resi: "TB99887766",
+        customerName: "Rachel Tan",
+        customerCode: "WM-2104",
+        detail: "Ubah status ke Ditimbang, berat 420g, sudah sortir",
+      });
+      const baseLog3 = createActivityLog({
+        action: "INPUT",
+        actor: "Budi Santoso",
+        role: "customer",
+        targetId: "SUB-1002",
+        route: "indo-china",
+        resi: "-",
+        customerName: "Budi Santoso",
+        customerCode: "WM-5831",
+        detail: "Input awal 1 item (Keripik Singkong & Cup Noodle x3)",
+      });
+
       return {
         tripConfig: {
           "china-indo": { lastReceive: "2026-12-05", departDate: "2026-12-10", defaultRate: 180 },
@@ -478,6 +544,7 @@
           { email: "rachel.tan@example.com", code: "WM-2104", name: "Rachel Tan", phone: "081234567890", socialId: "@racheltan" },
           { email: "budi.santoso@example.com", code: "WM-5831", name: "Budi Santoso", phone: "085611223344", socialId: "@budisantoso" },
         ],
+        deletedLogs: [],
         submissions: [
           {
             id: "SUB-1001",
@@ -504,7 +571,8 @@
             extraFee: 15000,
             paidAmount: 50000,
             paymentStatus: "DP",
-            lastAudit: "Diupdate oleh Elsa - 22 Nov 15:10",
+            lastAudit: `${baseLog2.detail} oleh ${baseLog2.actor} - ${baseLog2.timeLabel}`,
+            activityLogs: [baseLog2, baseLog1],
             photos: {
               arrival: [],
               scale: [],
@@ -558,7 +626,8 @@
             extraFee: 0,
             paidAmount: 0,
             paymentStatus: "Belum Lunas",
-            lastAudit: "Diupdate oleh Edith - 23 Nov 10:05",
+            lastAudit: `${baseLog3.detail} oleh ${baseLog3.actor} - ${baseLog3.timeLabel}`,
+            activityLogs: [baseLog3],
             photos: {
               arrival: [],
               scale: [],
@@ -668,7 +737,14 @@
       const [db, setDb] = useState(() => {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) return JSON.parse(raw);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return {
+              ...createInitialData(),
+              ...parsed,
+              deletedLogs: Array.isArray(parsed.deletedLogs) ? parsed.deletedLogs : [],
+            };
+          }
         } catch (err) {}
         return createInitialData();
       });
@@ -739,6 +815,7 @@
       const [returType, setReturType] = useState("Retur CO Ulang");
       const [returNewResi, setReturNewResi] = useState("");
       const [returReason, setReturReason] = useState("");
+      const [logModalSubId, setLogModalSubId] = useState(null);
 
       const [searchResi, setSearchResi] = useState("");
       const [filterCategory, setFilterCategory] = useState("all");
@@ -771,6 +848,7 @@
 
         const metaDoc = fs.collection("wh_markyours").doc("meta");
         const subsCol = fs.collection("wh_submissions");
+        const logsCol = fs.collection("wh_activity_logs");
 
         const unsubMeta = metaDoc.onSnapshot(
           (snap) => {
@@ -816,9 +894,27 @@
           }
         );
 
+        const unsubLogs = logsCol.onSnapshot(
+          (querySnap) => {
+            const cloudLogs = [];
+            querySnap.forEach((doc) => {
+              cloudLogs.push({ ...doc.data(), id: doc.id });
+            });
+            cloudLogs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+            if (cloudLogs.length > 0) {
+              setDb((prev) => ({
+                ...prev,
+                deletedLogs: cloudLogs.filter((l) => l.action === "HAPUS"),
+              }));
+            }
+          },
+          () => {}
+        );
+
         return () => {
           unsubMeta();
           unsubSubs();
+          unsubLogs();
         };
       }, []);
 
@@ -838,6 +934,15 @@
           .doc(subObj.id)
           .set(subObj, { merge: true })
           .catch((err) => console.error("Sync submission error:", err));
+      }
+
+      function syncActivityLogToCloud(logEntry) {
+        const fs = firestoreRef.current;
+        if (!fs || !logEntry?.id) return;
+        fs.collection("wh_activity_logs")
+          .doc(logEntry.id)
+          .set(logEntry)
+          .catch((err) => console.error("Sync log error:", err));
       }
 
       function deleteSubmissionFromCloud(subId) {
@@ -885,11 +990,50 @@
 
       const actorLabel = session?.role === "admin" ? session.adminName : session?.name || "User";
 
-      function stampAudit(actionText) {
-        const now = new Date();
-        const pad = (n) => String(n).padStart(2, "0");
-        const formatted = `${pad(now.getDate())} ${now.toLocaleString("id-ID", { month: "short" })} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-        return `${actionText || "Diupdate"} oleh ${actorLabel} - ${formatted}`;
+      function buildDiffSummary(prevSub, nextSub) {
+        const changes = [];
+        if (prevSub.status !== nextSub.status) {
+          changes.push(`Status: ${prevSub.status} → ${nextSub.status}`);
+        }
+        if ((prevSub.resi || "") !== (nextSub.resi || "")) {
+          changes.push(`Resi: ${prevSub.resi || "-"} → ${nextSub.resi || "-"}`);
+        }
+        if ((prevSub.city || "") !== (nextSub.city || "")) {
+          changes.push(`Kota: ${prevSub.city || "-"} → ${nextSub.city || "-"}`);
+        }
+        if (Boolean(prevSub.sortedChecked) !== Boolean(nextSub.sortedChecked)) {
+          changes.push(`Sortir: ${nextSub.sortedChecked ? "Ya" : "Belum"}`);
+        }
+        if ((prevSub.indoResi || "") !== (nextSub.indoResi || "")) {
+          changes.push(`Resi Indo: ${nextSub.indoResi || "-"}`);
+        }
+        if ((prevSub.tripOverride || "auto") !== (nextSub.tripOverride || "auto")) {
+          changes.push(`Kloter: ${nextSub.tripOverride}`);
+        }
+        if ((prevSub.shortageNote || "") !== (nextSub.shortageNote || "")) {
+          changes.push(`Catatan: ${nextSub.shortageNote || "(dihapus)"}`);
+        }
+        const prevGrams = (prevSub.items || []).reduce((a, b) => a + Number(b.weightGram || 0), 0);
+        const nextGrams = (nextSub.items || []).reduce((a, b) => a + Number(b.weightGram || 0), 0);
+        if (prevGrams !== nextGrams) {
+          changes.push(`Berat: ${prevGrams}g → ${nextGrams}g`);
+        }
+        if (Number(prevSub.ratePerGram || 0) !== Number(nextSub.ratePerGram || 0)) {
+          changes.push(`Tarif/g: ${nextSub.ratePerGram}`);
+        }
+        if (Number(prevSub.extraFee || 0) !== Number(nextSub.extraFee || 0)) {
+          changes.push(`Biaya tambahan: ${nextSub.extraFee}`);
+        }
+        if (Number(prevSub.paidAmount || 0) !== Number(nextSub.paidAmount || 0)) {
+          changes.push(`DP/Dibayar: ${nextSub.paidAmount}`);
+        }
+        if ((prevSub.paymentStatus || "") !== (nextSub.paymentStatus || "")) {
+          changes.push(`Bayar: ${nextSub.paymentStatus}`);
+        }
+        if (JSON.stringify(prevSub.returInfo) !== JSON.stringify(nextSub.returInfo) && nextSub.returInfo) {
+          changes.push(`Retur (${nextSub.returInfo.type})`);
+        }
+        return changes.length > 0 ? changes.join(" • ") : "Mengubah data/foto kiriman";
       }
 
       function handleDeleteSubmission(sub) {
@@ -906,11 +1050,25 @@
         );
         if (!ok) return;
 
+        const delLog = createActivityLog({
+          action: "HAPUS",
+          actor: actorLabel,
+          role: session.role,
+          targetId: sub.id,
+          route: sub.route,
+          resi: sub.resi,
+          customerName: sub.customerName,
+          customerCode: sub.customerCode,
+          detail: `Menghapus data retur/tidak jadi kirim (${(sub.items || []).map((i) => `${i.name} x${i.qty}`).join(", ")})`,
+        });
+
         setDb((prev) => ({
           ...prev,
           submissions: prev.submissions.filter((s) => s.id !== sub.id),
+          deletedLogs: [delLog, ...(prev.deletedLogs || [])],
         }));
         deleteSubmissionFromCloud(sub.id);
+        syncActivityLogToCloud(delLog);
       }
 
       function handleLoginSubmit(e) {
@@ -1073,11 +1231,33 @@
 
         const cfg = db.tripConfig[route] || { defaultRate: 180 };
         const cleanResi = formData.resi.trim();
+        const subId = "SUB-" + Date.now().toString().slice(-6);
+        const custCode = session.role === "customer" ? session.code : "ADMIN-ENTRY";
+        const mappedItems = formData.items.map((it, i) => ({
+          ...it,
+          id: it.id || `ITM-${Date.now()}-${i}`,
+          name: it.name.trim() || `Barang #${i + 1}`,
+          qty: Math.max(1, Number(it.qty || 1)),
+          weightGram: Number(it.weightGram || 0),
+        }));
+
+        const firstLog = createActivityLog({
+          action: "INPUT",
+          actor: actorLabel,
+          role: session.role,
+          targetId: subId,
+          route,
+          resi: cleanResi,
+          customerName: formData.customerName.trim(),
+          customerCode: custCode,
+          detail: `Input ${mappedItems.length} item (${mappedItems.map((i) => `${i.name} x${i.qty}`).join(", ")})`,
+        });
+
         const newSub = {
-          id: "SUB-" + Date.now().toString().slice(-6),
+          id: subId,
           route,
           createdAt: new Date().toISOString(),
-          customerCode: session.role === "customer" ? session.code : "ADMIN-ENTRY",
+          customerCode: custCode,
           customerEmail: session.role === "customer" ? session.email : ADMIN_EMAIL,
           customerName: formData.customerName.trim(),
           phone: formData.phone.trim(),
@@ -1102,7 +1282,8 @@
           extraFee: 0,
           paidAmount: 0,
           paymentStatus: "Belum Lunas",
-          lastAudit: stampAudit("Diinput"),
+          lastAudit: `${firstLog.detail} oleh ${firstLog.actor} - ${firstLog.timeLabel}`,
+          activityLogs: [firstLog],
           photos: {
             arrival: [],
             scale: [],
@@ -1110,13 +1291,7 @@
             indoPack: [],
             koperPack: [],
           },
-          items: formData.items.map((it, i) => ({
-            ...it,
-            id: it.id || `ITM-${Date.now()}-${i}`,
-            name: it.name.trim() || `Barang #${i + 1}`,
-            qty: Math.max(1, Number(it.qty || 1)),
-            weightGram: Number(it.weightGram || 0),
-          })),
+          items: mappedItems,
         };
 
         setDb((prev) => ({
@@ -1124,6 +1299,7 @@
           submissions: [newSub, ...prev.submissions],
         }));
         syncSubmissionToCloud(newSub);
+        syncActivityLogToCloud(firstLog);
 
         setFormToast(t.formSaved);
         setFormData((prev) => ({
@@ -1148,23 +1324,40 @@
         }));
       }
 
-      function updateSubmission(subId, updater) {
+      function updateSubmission(subId, updater, actionType = "UBAH", customDetail = "") {
         let updatedObj = null;
+        let createdLog = null;
         setDb((prev) => ({
           ...prev,
           submissions: prev.submissions.map((s) => {
             if (s.id !== subId) return s;
             const patch = typeof updater === "function" ? updater(s) : updater;
+            const candidate = { ...s, ...patch };
+            const summary = customDetail || buildDiffSummary(s, candidate);
+            createdLog = createActivityLog({
+              action: actionType,
+              actor: actorLabel,
+              role: session.role,
+              targetId: s.id,
+              route: s.route,
+              resi: candidate.resi,
+              customerName: candidate.customerName,
+              customerCode: candidate.customerCode,
+              detail: summary,
+            });
             updatedObj = {
-              ...s,
-              ...patch,
-              lastAudit: stampAudit("Diupdate"),
+              ...candidate,
+              lastAudit: `${summary} oleh ${actorLabel} - ${createdLog.timeLabel}`,
+              activityLogs: [createdLog, ...(s.activityLogs || [])],
             };
             return updatedObj;
           }),
         }));
         if (updatedObj) {
           syncSubmissionToCloud(updatedObj);
+        }
+        if (createdLog) {
+          syncActivityLogToCloud(createdLog);
         }
       }
 
@@ -1177,21 +1370,31 @@
         for (const f of files.slice(0, slots)) {
           compressed.push(await compressImageFile(f));
         }
-        updateSubmission(subId, (prev) => ({
-          photos: {
-            ...prev.photos,
-            [stageKey]: [...(prev.photos?.[stageKey] || []), ...compressed],
-          },
-        }));
+        updateSubmission(
+          subId,
+          (prev) => ({
+            photos: {
+              ...prev.photos,
+              [stageKey]: [...(prev.photos?.[stageKey] || []), ...compressed],
+            },
+          }),
+          "UBAH",
+          `Upload ${compressed.length} foto tahap (${stageKey})`
+        );
       }
 
       function handleSaveMissingResi(subId) {
         const val = (resiDrafts[subId] || "").trim();
         if (!val) return;
-        updateSubmission(subId, (prev) => ({
-          resi: val,
-          status: prev.status === "Menunggu Resi" ? "Dalam Pengiriman" : prev.status,
-        }));
+        updateSubmission(
+          subId,
+          (prev) => ({
+            resi: val,
+            status: prev.status === "Menunggu Resi" ? "Dalam Pengiriman" : prev.status,
+          }),
+          "RESI",
+          `Mengisi nomor resi: ${val}`
+        );
         setResiDrafts((prev) => ({ ...prev, [subId]: "" }));
       }
 
@@ -1201,13 +1404,18 @@
         if (!target) return;
         const oldVal = target.resi || "(Kosong)";
         const nextVal = newResiInput.trim();
-        updateSubmission(changeResiModal, {
-          resi: nextVal,
-          resiHistory: [
-            ...(target.resiHistory || []),
-            { from: oldVal, to: nextVal, by: actorLabel, at: new Date().toLocaleString("id-ID") },
-          ],
-        });
+        updateSubmission(
+          changeResiModal,
+          {
+            resi: nextVal,
+            resiHistory: [
+              ...(target.resiHistory || []),
+              { from: oldVal, to: nextVal, by: actorLabel, at: new Date().toLocaleString("id-ID") },
+            ],
+          },
+          "RESI",
+          `Ganti resi dari ${oldVal} ke ${nextVal}`
+        );
         setChangeResiModal(null);
         setNewResiInput("");
       }
@@ -1226,7 +1434,12 @@
         if (returType === "Retur CO Ulang" && returNewResi.trim()) {
           patch.resi = returNewResi.trim();
         }
-        updateSubmission(returModal, patch);
+        updateSubmission(
+          returModal,
+          patch,
+          "RETUR",
+          `Set Retur (${returType})${returReason.trim() ? `: ${returReason.trim()}` : ""}`
+        );
         setReturModal(null);
         setReturNewResi("");
         setReturReason("");
@@ -1242,7 +1455,7 @@
         const headers = [
           "ID", "Jalur", "Tanggal", "Kode Cust", "Nama", "No HP", "Pengupload",
           "Resi", "Status", "Kloter", "Kota", "Sortir", "Resi Indo",
-          "Berat (g)", "Tarif/g", "Biaya Tambahan", "Total (IDR)", "DP", "Sisa", "Status Bayar", "Catatan"
+          "Berat (g)", "Tarif/g", "Biaya Tambahan", "Total (IDR)", "DP", "Sisa", "Status Bayar", "Catatan", "Log Terakhir"
         ];
         const rows = visibleSubmissions.map((s) => {
           const calc = computeSubmissionTotal(s, db.tripConfig);
@@ -1252,7 +1465,7 @@
             isNextTrip(s, db.tripConfig) ? "Ikut Next Trip" : "Trip Aktif",
             s.city, s.sortedChecked ? "Ya" : "Belum", s.indoResi,
             calc.totalGrams, calc.rate, calc.extra, Math.round(calc.totalIdr),
-            calc.paid, Math.round(calc.remaining), s.paymentStatus, s.shortageNote || ""
+            calc.paid, Math.round(calc.remaining), s.paymentStatus, s.shortageNote || "", s.lastAudit || ""
           ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",");
         });
         const csv = [headers.join(","), ...rows].join("\n");
@@ -1319,6 +1532,7 @@
         }
         syncMetaToCloud(db.tripConfig, db.customers);
         db.submissions.forEach((s) => syncSubmissionToCloud(s));
+        (db.deletedLogs || []).forEach((l) => syncActivityLogToCloud(l));
         setSyncStatusMsg(`Berhasil mengirim ${db.submissions.length} data lokal ke Firebase Firestore!`);
       }
 
@@ -1401,6 +1615,30 @@
         tripFilter,
         sortBy,
       ]);
+
+      const allActivityLogs = useMemo(() => {
+        if (!route || route === "usa-cargo" || !session) return [];
+        const logs = [];
+        for (const sub of db.submissions) {
+          if (sub.route !== route) continue;
+          if (session.role === "customer" && sub.customerCode !== session.code) continue;
+          for (const lg of sub.activityLogs || []) {
+            logs.push({ ...lg, targetId: sub.id, route: sub.route, customerName: sub.customerName, resi: sub.resi });
+          }
+        }
+        for (const dl of db.deletedLogs || []) {
+          if (dl.route !== route) continue;
+          if (session.role === "customer" && dl.customerCode !== session.code) continue;
+          logs.push(dl);
+        }
+        logs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+        return logs;
+      }, [db.submissions, db.deletedLogs, route, session]);
+
+      const modalTargetSub = useMemo(() => {
+        if (!logModalSubId) return null;
+        return db.submissions.find((s) => s.id === logModalSubId) || null;
+      }, [logModalSubId, db.submissions]);
 
       const uniqueCustomers = useMemo(() => {
         const names = new Set(db.submissions.filter((s) => s.route === route).map((s) => s.customerName).filter(Boolean));
@@ -1934,6 +2172,7 @@
                 { id: "resi", label: `📦 ${t.navResi} (${missingResiList.length})` },
                 { id: "rekap", label: `📊 ${t.navRekap}` },
                 { id: "billing", label: `🧾 ${t.navBilling}` },
+                { id: "logs", label: `🕒 ${t.navLogs} (${allActivityLogs.length})` },
                 ...(session.role === "admin" ? [{ id: "trip", label: `🗓️ ${t.navTrip}` }] : []),
               ].map((tab) => (
                 <button
@@ -2417,7 +2656,7 @@
                           <th className="p-2.5 border border-melon-200 text-left">Kota</th>
                         )}
                         <th className="p-2.5 border border-melon-200 text-left">Sortir &amp; Resi Indo</th>
-                        <th className="p-2.5 border border-melon-200 text-left">Foto &amp; Catatan</th>
+                        <th className="p-2.5 border border-melon-200 text-left">Foto, Catatan &amp; Log</th>
                         <th className="p-2.5 border border-melon-200 text-left">Aksi</th>
                       </tr>
                     </thead>
@@ -2428,6 +2667,7 @@
                         const isRetur = isReturSubmission(sub);
                         const custCanDelete = canCustomerDeleteSubmission(sub);
                         const shareUrl = `${window.location.origin}${window.location.pathname}?track=${encodeURIComponent(sub.id)}`;
+                        const logs = sub.activityLogs || [];
 
                         return (
                           <tr key={sub.id} className="odd:bg-white even:bg-melon-50/30 align-top">
@@ -2577,7 +2817,7 @@
                               </div>
                             </td>
 
-                            <td className="p-2.5 border border-melon-100 min-w-[180px]">
+                            <td className="p-2.5 border border-melon-100 min-w-[200px]">
                               {sub.shortageNote && (
                                 <div className="mb-1.5 px-2 py-1 rounded-lg bg-sun-100 border border-sun-300 text-[10px] font-bold text-amber-950">
                                   ⚠️ Ada Catatan/Komplain: {sub.shortageNote}
@@ -2596,10 +2836,10 @@
                               {route === "china-indo" ? (
                                 <div className="space-y-1">
                                   {[
-                                    { key: "arrival", label: "Foto Datang", custCanSee: true },
-                                    ...(session.role === "admin" ? [{ key: "scale", label: "Foto Timbangan", custCanSee: false }] : []),
-                                    { key: "indoItem", label: "Barang di Indo", custCanSee: true },
-                                    { key: "indoPack", label: "Packing di Indo", custCanSee: true },
+                                    { key: "arrival", label: "Foto Datang" },
+                                    ...(session.role === "admin" ? [{ key: "scale", label: "Foto Timbangan" }] : []),
+                                    { key: "indoItem", label: "Barang di Indo" },
+                                    { key: "indoPack", label: "Packing di Indo" },
                                   ].map((st) => (
                                     <div key={st.key}>
                                       <div className="text-[10px] font-semibold text-gray-600">
@@ -2651,9 +2891,27 @@
                                   ))}
                                 </div>
                               )}
-                              {sub.lastAudit && (
-                                <div className="text-[10px] text-gray-400 mt-1.5">{sub.lastAudit}</div>
-                              )}
+
+                              {/* Log aktivitas bisa dilihat oleh admin maupun customer */}
+                              <div className="mt-2 pt-1.5 border-t border-melon-100 space-y-1">
+                                <div className="text-[10px] font-bold text-gray-700">{t.activityTitle}</div>
+                                {logs.slice(0, 2).map((lg) => (
+                                  <div key={lg.id} className="text-[10px] text-gray-600 bg-white/90 px-2 py-1 rounded border border-melon-100">
+                                    <span className="font-bold text-melon-500">[{lg.action}]</span>{" "}
+                                    <strong>{lg.actor}</strong> ({lg.role}) • {lg.detail}{" "}
+                                    <span className="text-gray-400">({lg.timeLabel})</span>
+                                  </div>
+                                ))}
+                                {logs.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLogModalSubId(sub.id)}
+                                    className="text-[10px] font-bold text-rind-500 hover:underline cursor-pointer"
+                                  >
+                                    {t.viewAllLogs} ({logs.length})
+                                  </button>
+                                )}
+                              </div>
                             </td>
 
                             <td className="p-2.5 border border-melon-100 min-w-[140px] space-y-1.5">
@@ -2933,6 +3191,54 @@
               </div>
             )}
 
+            {activeTab === "logs" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-melon-500">{t.activityTitle} ({routeTitle})</h2>
+                    <p className="text-xs text-gray-600">
+                      Menampilkan siapa yang memasukkan, mengubah, meretur, atau menghapus data beserta waktunya.
+                    </p>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full bg-melon-100 text-melon-500 font-bold">
+                    {allActivityLogs.length} Catatan
+                  </span>
+                </div>
+
+                {allActivityLogs.length === 0 ? (
+                  <p className="text-xs text-gray-500 bg-melon-50 p-4 rounded-2xl">Belum ada log aktivitas.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {allActivityLogs.map((lg) => (
+                      <div
+                        key={lg.id}
+                        className="p-3.5 rounded-2xl bg-melon-50/50 border border-melon-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-full bg-melon-400 text-white font-bold text-[10px]">
+                              {lg.action}
+                            </span>
+                            <strong className="text-gray-800">{lg.actor}</strong>
+                            <span className="text-[11px] text-gray-500">({lg.role})</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="font-semibold text-gray-700">
+                              {lg.customerName} ({lg.targetId})
+                            </span>
+                            {lg.resi && lg.resi !== "-" && (
+                              <span className="text-melon-500 font-semibold">• Resi: {lg.resi}</span>
+                            )}
+                          </div>
+                          <div className="text-gray-700">{lg.detail}</div>
+                        </div>
+                        <div className="text-[11px] text-gray-500 whitespace-nowrap">{lg.timeLabel}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "trip" && session.role === "admin" && (
               <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4 max-w-xl">
                 <h2 className="font-display text-xl font-bold text-melon-500">{t.navTrip} ({routeTitle})</h2>
@@ -3007,6 +3313,43 @@
               </div>
             )}
           </main>
+
+          {logModalSubId && modalTargetSub && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-lg w-full border-2 border-melon-200 space-y-4 max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-melon-100 pb-2">
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-melon-500">{t.activityTitle}</h3>
+                    <div className="text-xs text-gray-600">
+                      {modalTargetSub.customerName} • {modalTargetSub.id} • Resi: {modalTargetSub.resi || "-"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLogModalSubId(null)}
+                    className="px-3 py-1 rounded-xl bg-gray-100 text-xs font-bold cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {(modalTargetSub.activityLogs || []).map((lg) => (
+                    <div key={lg.id} className="p-3 rounded-2xl bg-melon-50/60 border border-melon-100 text-xs space-y-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-melon-500">[{lg.action}]</span>{" "}
+                          <strong>{lg.actor}</strong> <span className="text-gray-500">({lg.role})</span>
+                        </div>
+                        <span className="text-[11px] text-gray-400">{lg.timeLabel}</span>
+                      </div>
+                      <div className="text-gray-700">{lg.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {changeResiModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
