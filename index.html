@@ -8,6 +8,11 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase SDK (Compat untuk HTML langsung tanpa bundler) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script>
     tailwind.config = {
@@ -68,6 +73,18 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
+    // =========================================================================
+    // 1. TEMPELKAN FIREBASE CONFIG KAMU DI SINI (Ganti nilai di dalam tanda kutip)
+    // =========================================================================
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey: "GANTI_DENGAN_API_KEY_KAMU",
+      authDomain: "GANTI_DENGAN_AUTH_DOMAIN_KAMU",
+      projectId: "GANTI_DENGAN_PROJECT_ID_KAMU",
+      storageBucket: "GANTI_DENGAN_STORAGE_BUCKET_KAMU",
+      messagingSenderId: "GANTI_DENGAN_MESSAGING_SENDER_ID_KAMU",
+      appId: "GANTI_DENGAN_APP_ID_KAMU"
+    };
+
     const ADMIN_EMAIL = "markyours.here@gmail.com";
     const ADMIN_PINS = {
       Elsa: "1234",
@@ -76,6 +93,37 @@
     const CITIES = ["Tianjin", "Shanghai", "Nanjing"];
     const STORAGE_KEY = "wh_by_markyours_here_v1_data";
     const FB_CONFIG_KEY = "wh_by_markyours_here_fb_config";
+
+    function getActiveFirebaseConfig() {
+      try {
+        const saved = localStorage.getItem(FB_CONFIG_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.apiKey && parsed.projectId) return parsed;
+        }
+      } catch (e) {}
+      if (
+        DEFAULT_FIREBASE_CONFIG.apiKey &&
+        !DEFAULT_FIREBASE_CONFIG.apiKey.startsWith("GANTI_DENGAN")
+      ) {
+        return DEFAULT_FIREBASE_CONFIG;
+      }
+      return null;
+    }
+
+    function initFirestore() {
+      const cfg = getActiveFirebaseConfig();
+      if (!cfg || !window.firebase) return null;
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(cfg);
+        }
+        return firebase.firestore();
+      } catch (err) {
+        console.error("Firebase init error:", err);
+        return null;
+      }
+    }
 
     const I18N = {
       id: {
@@ -507,7 +555,7 @@
         reader.onload = (e) => {
           const img = new Image();
           img.onload = () => {
-            const maxW = 600;
+            const maxW = 500;
             let w = img.width;
             let h = img.height;
             if (w > maxW) {
@@ -519,7 +567,7 @@
             canvas.height = h;
             const ctx = canvas.getContext("2d");
             ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL("image/jpeg", 0.65));
+            resolve(canvas.toDataURL("image/jpeg", 0.55));
           };
           img.src = e.target.result;
         };
@@ -574,6 +622,10 @@
     function App() {
       const [progress, setProgress] = useState(0);
       const [loaded, setLoaded] = useState(false);
+
+      const firestoreRef = useRef(null);
+      const [cloudStatus, setCloudStatus] = useState("offline"); // offline | connecting | connected | error
+      const [cloudErrorDetail, setCloudErrorDetail] = useState("");
 
       const [db, setDb] = useState(() => {
         try {
@@ -656,6 +708,90 @@
         return I18N[lang] || I18N.id;
       }, [session, lang]);
 
+      // Connect to Firebase Firestore (Realtime sync)
+      useEffect(() => {
+        const fs = initFirestore();
+        if (!fs) {
+          setCloudStatus("offline");
+          return;
+        }
+        firestoreRef.current = fs;
+        setCloudStatus("connecting");
+
+        const metaDoc = fs.collection("wh_markyours").doc("meta");
+        const subsCol = fs.collection("wh_submissions");
+
+        const unsubMeta = metaDoc.onSnapshot(
+          (snap) => {
+            setCloudStatus("connected");
+            setCloudErrorDetail("");
+            if (snap.exists) {
+              const data = snap.data();
+              setDb((prev) => ({
+                ...prev,
+                tripConfig: data.tripConfig || prev.tripConfig,
+                customers: Array.isArray(data.customers) ? data.customers : prev.customers,
+              }));
+            } else {
+              // Seed initial meta if empty
+              const init = createInitialData();
+              metaDoc.set({
+                tripConfig: init.tripConfig,
+                customers: init.customers,
+              }).catch(() => {});
+            }
+          },
+          (err) => {
+            setCloudStatus("error");
+            setCloudErrorDetail(err.message || "Gagal terhubung ke Firestore Rules");
+          }
+        );
+
+        const unsubSubs = subsCol.onSnapshot(
+          (querySnap) => {
+            setCloudStatus("connected");
+            if (!querySnap.empty) {
+              const cloudSubs = [];
+              querySnap.forEach((doc) => {
+                cloudSubs.push({ ...doc.data(), id: doc.id });
+              });
+              cloudSubs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+              setDb((prev) => ({
+                ...prev,
+                submissions: cloudSubs,
+              }));
+            }
+          },
+          (err) => {
+            setCloudStatus("error");
+            setCloudErrorDetail(err.message || "Gagal membaca wh_submissions");
+          }
+        );
+
+        return () => {
+          unsubMeta();
+          unsubSubs();
+        };
+      }, []);
+
+      function syncMetaToCloud(nextTripConfig, nextCustomers) {
+        const fs = firestoreRef.current;
+        if (!fs) return;
+        fs.collection("wh_markyours")
+          .doc("meta")
+          .set({ tripConfig: nextTripConfig, customers: nextCustomers }, { merge: true })
+          .catch((err) => console.error("Sync meta error:", err));
+      }
+
+      function syncSubmissionToCloud(subObj) {
+        const fs = firestoreRef.current;
+        if (!fs || !subObj?.id) return;
+        fs.collection("wh_submissions")
+          .doc(subObj.id)
+          .set(subObj, { merge: true })
+          .catch((err) => console.error("Sync submission error:", err));
+      }
+
       useEffect(() => {
         let current = 0;
         const timer = setInterval(() => {
@@ -713,7 +849,6 @@
           return;
         }
 
-        // Check existing customer by code or email
         const existing = db.customers.find(
           (c) => c.code.toLowerCase() === val.toLowerCase() || c.email.toLowerCase() === val.toLowerCase()
         );
@@ -740,7 +875,9 @@
             phone: "",
             socialId: "",
           };
-          setDb((prev) => ({ ...prev, customers: [...prev.customers, newCust] }));
+          const nextCustomers = [...db.customers, newCust];
+          setDb((prev) => ({ ...prev, customers: nextCustomers }));
+          syncMetaToCloud(db.tripConfig, nextCustomers);
           setIssuedCodeBanner(newCode);
           setSession({
             role: "customer",
@@ -908,6 +1045,7 @@
           ...prev,
           submissions: [newSub, ...prev.submissions],
         }));
+        syncSubmissionToCloud(newSub);
 
         setFormToast(t.formSaved);
         setFormData((prev) => ({
@@ -933,18 +1071,23 @@
       }
 
       function updateSubmission(subId, updater) {
+        let updatedObj = null;
         setDb((prev) => ({
           ...prev,
           submissions: prev.submissions.map((s) => {
             if (s.id !== subId) return s;
             const patch = typeof updater === "function" ? updater(s) : updater;
-            return {
+            updatedObj = {
               ...s,
               ...patch,
               lastAudit: stampAudit("Diupdate"),
             };
+            return updatedObj;
           }),
         }));
+        if (updatedObj) {
+          syncSubmissionToCloud(updatedObj);
+        }
       }
 
       async function handleAdminStagePhotoUpload(subId, stageKey, filesList) {
@@ -993,16 +1136,19 @@
 
       function handleConfirmRetur() {
         if (!returModal) return;
-        updateSubmission(returModal, {
+        const patch = {
           status: "Retur",
-          resi: returType === "Retur CO Ulang" && returNewResi.trim() ? returNewResi.trim() : undefined,
           returInfo: {
             type: returType,
             newResi: returNewResi.trim(),
             reason: returReason.trim(),
             by: actorLabel,
           },
-        });
+        };
+        if (returType === "Retur CO Ulang" && returNewResi.trim()) {
+          patch.resi = returNewResi.trim();
+        }
+        updateSubmission(returModal, patch);
         setReturModal(null);
         setReturNewResi("");
         setReturReason("");
@@ -1060,7 +1206,9 @@
             const parsed = JSON.parse(ev.target.result);
             if (parsed && Array.isArray(parsed.submissions)) {
               setDb(parsed);
-              setSyncStatusMsg("Backup JSON berhasil dimuat!");
+              syncMetaToCloud(parsed.tripConfig || db.tripConfig, parsed.customers || db.customers);
+              parsed.submissions.forEach((s) => syncSubmissionToCloud(s));
+              setSyncStatusMsg("Backup JSON berhasil dimuat & disinkronkan ke Firebase!");
             } else {
               setSyncStatusMsg("Format JSON tidak valid.");
             }
@@ -1072,11 +1220,31 @@
       }
 
       function saveFirebaseConfig() {
-        localStorage.setItem(FB_CONFIG_KEY, fbConfigText);
-        setSyncStatusMsg("Konfigurasi Firebase disimpan di browser. Pastikan SDK/rules proyek aktif untuk sinkronisasi cloud.");
+        try {
+          const parsed = JSON.parse(fbConfigText);
+          if (!parsed.apiKey || !parsed.projectId) {
+            setSyncStatusMsg("JSON harus memiliki apiKey dan projectId.");
+            return;
+          }
+          localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(parsed));
+          setSyncStatusMsg("Konfigurasi Firebase tersimpan! Halaman akan dimuat ulang untuk menghubungkan...");
+          setTimeout(() => window.location.reload(), 900);
+        } catch {
+          setSyncStatusMsg("Format JSON tidak valid. Pastikan tanda kutip sesuai format JSON.");
+        }
       }
 
-      // Filtered & sorted submissions for current route and role
+      function pushLocalDataToCloud() {
+        if (!firestoreRef.current) {
+          setSyncStatusMsg("Firebase belum terhubung. Cek firebaseConfig & Firestore Rules dulu.");
+          return;
+        }
+        syncMetaToCloud(db.tripConfig, db.customers);
+        db.submissions.forEach((s) => syncSubmissionToCloud(s));
+        setSyncStatusMsg(`Berhasil mengirim ${db.submissions.length} data lokal ke Firebase Firestore!`);
+      }
+
+      // Filtered & sorted submissions
       const visibleSubmissions = useMemo(() => {
         if (!route || route === "usa-cargo" || !session) return [];
         let list = db.submissions.filter((s) => s.route === route);
@@ -1240,6 +1408,26 @@
 
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-melon-500">{t.brand}</h1>
               <p className="text-sm font-medium text-rind-500 mb-3">{t.tagline} ✨🌊</p>
+
+              {/* Indikator Koneksi Firebase */}
+              <div className="mb-3 flex items-center gap-1.5 text-[11px]">
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${
+                    cloudStatus === "connected"
+                      ? "bg-rind-500"
+                      : cloudStatus === "error"
+                      ? "bg-red-500"
+                      : "bg-amber-400"
+                  }`}
+                />
+                <span className="text-gray-600">
+                  {cloudStatus === "connected"
+                    ? "Cloud Sync Aktif (Firebase)"
+                    : cloudStatus === "error"
+                    ? `Firebase Error: ${cloudErrorDetail}`
+                    : "Mode Lokal (Belum terhubung Firebase)"}
+                </span>
+              </div>
 
               {!pendingAdminEmail ? (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -1447,8 +1635,19 @@
                   ← {t.backRoute}
                 </button>
                 <div>
-                  <div className="font-display font-bold text-base sm:text-lg text-melon-500 leading-tight">
-                    {t.brand} • <span className="text-rind-500">{routeTitle}</span> 🍉
+                  <div className="font-display font-bold text-base sm:text-lg text-melon-500 leading-tight flex items-center gap-2">
+                    <span>{t.brand} • <span className="text-rind-500">{routeTitle}</span> 🍉</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-sans font-bold ${
+                        cloudStatus === "connected"
+                          ? "bg-rind-100 text-rind-500"
+                          : cloudStatus === "error"
+                          ? "bg-red-100 text-red-600"
+                          : "bg-sun-100 text-amber-800"
+                      }`}
+                    >
+                      {cloudStatus === "connected" ? "☁️ Connected" : cloudStatus === "error" ? "⚠️ Sync Error" : "Lokal"}
+                    </span>
                   </div>
                   <div className="text-[11px] text-gray-600">
                     {session.role === "admin" ? `Admin: ${session.adminName}` : `Customer: ${session.customerName || session.code} (${session.code})`}
@@ -1878,7 +2077,7 @@
               </div>
             )}
 
-            {/* TAB 3: REKAPAN & TRACKING (SPREADSHEET STYLE) */}
+            {/* TAB 3: REKAPAN & TRACKING */}
             {activeTab === "rekap" && (
               <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-4 sm:p-6 shadow-lg space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2156,7 +2355,6 @@
                                 />
                               )}
 
-                              {/* Stage Photos based on route & role */}
                               {route === "china-indo" ? (
                                 <div className="space-y-1">
                                   {[
@@ -2482,15 +2680,14 @@
                     <input
                       type="date"
                       value={currentTripCfg.lastReceive || ""}
-                      onChange={(e) =>
-                        setDb((prev) => ({
-                          ...prev,
-                          tripConfig: {
-                            ...prev.tripConfig,
-                            [route]: { ...prev.tripConfig[route], lastReceive: e.target.value },
-                          },
-                        }))
-                      }
+                      onChange={(e) => {
+                        const nextTrip = {
+                          ...db.tripConfig,
+                          [route]: { ...db.tripConfig[route], lastReceive: e.target.value },
+                        };
+                        setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                        syncMetaToCloud(nextTrip, db.customers);
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
                     />
                   </div>
@@ -2499,15 +2696,14 @@
                     <input
                       type="date"
                       value={currentTripCfg.departDate || ""}
-                      onChange={(e) =>
-                        setDb((prev) => ({
-                          ...prev,
-                          tripConfig: {
-                            ...prev.tripConfig,
-                            [route]: { ...prev.tripConfig[route], departDate: e.target.value },
-                          },
-                        }))
-                      }
+                      onChange={(e) => {
+                        const nextTrip = {
+                          ...db.tripConfig,
+                          [route]: { ...db.tripConfig[route], departDate: e.target.value },
+                        };
+                        setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                        syncMetaToCloud(nextTrip, db.customers);
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
                     />
                   </div>
@@ -2516,15 +2712,14 @@
                     <input
                       type="number"
                       value={currentTripCfg.defaultRate ?? 180}
-                      onChange={(e) =>
-                        setDb((prev) => ({
-                          ...prev,
-                          tripConfig: {
-                            ...prev.tripConfig,
-                            [route]: { ...prev.tripConfig[route], defaultRate: Number(e.target.value || 0) },
-                          },
-                        }))
-                      }
+                      onChange={(e) => {
+                        const nextTrip = {
+                          ...db.tripConfig,
+                          [route]: { ...db.tripConfig[route], defaultRate: Number(e.target.value || 0) },
+                        };
+                        setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                        syncMetaToCloud(nextTrip, db.customers);
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
                     />
                   </div>
@@ -2534,15 +2729,14 @@
                       <input
                         type="number"
                         value={currentTripCfg.yuanRate ?? 2200}
-                        onChange={(e) =>
-                          setDb((prev) => ({
-                            ...prev,
-                            tripConfig: {
-                              ...prev.tripConfig,
-                              [route]: { ...prev.tripConfig[route], yuanRate: Number(e.target.value || 1) },
-                            },
-                          }))
-                        }
+                        onChange={(e) => {
+                          const nextTrip = {
+                            ...db.tripConfig,
+                            [route]: { ...db.tripConfig[route], yuanRate: Number(e.target.value || 1) },
+                          };
+                          setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                          syncMetaToCloud(nextTrip, db.customers);
+                        }}
                         className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
                       />
                     </div>
@@ -2657,6 +2851,10 @@
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-6 max-w-md w-full border-2 border-melon-200 space-y-4">
                 <h3 className="font-display text-lg font-bold text-melon-500">☁️ Sync &amp; Backup</h3>
+                <div className="text-xs p-2.5 rounded-xl bg-melon-50 border border-melon-200">
+                  Status Firebase: <strong>{cloudStatus.toUpperCase()}</strong>
+                  {cloudErrorDetail && <div className="text-red-600 mt-1">{cloudErrorDetail}</div>}
+                </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -2670,13 +2868,20 @@
                     <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
                   </label>
                 </div>
+                <button
+                  type="button"
+                  onClick={pushLocalDataToCloud}
+                  className="w-full py-2 rounded-xl bg-rind-500 text-white text-xs font-bold cursor-pointer"
+                >
+                  ⬆️ Upload Data Lokal ke Firebase Sekarang
+                </button>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Firebase Config JSON</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Override Firebase Config JSON (Opsional)</label>
                   <textarea
                     rows={4}
                     value={fbConfigText}
                     onChange={(e) => setFbConfigText(e.target.value)}
-                    placeholder='{"apiKey":"...","projectId":"..."}'
+                    placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
                     className="w-full px-3 py-2 rounded-xl border border-melon-200 text-xs font-mono"
                   />
                   <button
