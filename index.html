@@ -134,6 +134,12 @@
         loginSub: "Masukkan email untuk mendapatkan kode akses berkelanjutan, atau ketik kode akses yang sudah dimiliki.",
         loginPlaceholder: "Email atau Kode Akses (cth: nama@email.com / WM-1024)",
         loginBtn: "Lanjut",
+        publicTrackBtn: "Pantau Barang Tanpa Login",
+        publicTrackTitle: "Pantau Barang & Tagihan (Tanpa Login)",
+        publicTrackSub: "Masukkan ID Kiriman (cth: SUB-1001), Nomor Resi, atau Kode Customer (cth: WM-2104) untuk melihat detail barang, berat, dan foto.",
+        publicTrackPlaceholder: "ID Kiriman / Resi / Kode Customer...",
+        publicTrackSearch: "Cari Data",
+        backToLogin: "Kembali ke Login",
         yourCode: "Kode Akses Kamu",
         codeNote: "Simpan kode ini ya! Bisa dipakai seterusnya untuk cek & edit barangmu di bahasa apa pun.",
         logout: "Keluar",
@@ -202,6 +208,8 @@
         submitForm: "Simpan Form Barang",
         formSaved: "Data barang berhasil disimpan! 🍉✨",
         lockedNotice: "Form terkunci untuk edit detail karena barang sudah diproses gudang. Kamu tetap bisa Ganti Resi atau Ajukan Retur.",
+        deleteReturBtn: "Hapus Retur",
+        deleteBlockedNotice: "Barang sudah ditimbang/masuk koper/sortir. Hapus hanya bisa dilakukan oleh admin.",
         changeResi: "Ganti Resi",
         oldResi: "Resi Sebelumnya",
         newResi: "Resi Baru",
@@ -231,6 +239,12 @@
         loginSub: "Enter your email to get a reusable access code, or enter an existing access code.",
         loginPlaceholder: "Email or Access Code (e.g. name@email.com / WM-1024)",
         loginBtn: "Continue",
+        publicTrackBtn: "Track Without Login",
+        publicTrackTitle: "Track Items & Billing (No Login)",
+        publicTrackSub: "Enter a Submission ID (e.g. SUB-1001), Tracking Number, or Customer Code (e.g. WM-2104) to view item details, weight, and photos.",
+        publicTrackPlaceholder: "Submission ID / Tracking No. / Customer Code...",
+        publicTrackSearch: "Find Data",
+        backToLogin: "Back to Sign In",
         yourCode: "Your Access Code",
         codeNote: "Save this code! You can reuse it anytime to view & edit your items in any language.",
         logout: "Sign Out",
@@ -299,6 +313,8 @@
         submitForm: "Submit Item Form",
         formSaved: "Item data saved successfully! 🍉✨",
         lockedNotice: "Item details are locked because the warehouse has processed this item. You can still Change Tracking No. or Request Return.",
+        deleteReturBtn: "Delete Return",
+        deleteBlockedNotice: "Item is already weighed, packed in suitcase, or sorted. Deletion requires an admin.",
         changeResi: "Change Resi",
         oldResi: "Previous Resi",
         newResi: "New Resi",
@@ -328,6 +344,12 @@
         loginSub: "输入邮箱获取可长期使用的访问码，或直接输入已有的访问码。",
         loginPlaceholder: "邮箱或访问码（例：name@email.com / WM-1024）",
         loginBtn: "继续",
+        publicTrackBtn: "免登录查询订单",
+        publicTrackTitle: "免登录查看商品与账单",
+        publicTrackSub: "输入提交编号（例：SUB-1001）、单号或客户码（例：WM-2104），即可查看商品详情、重量与照片。",
+        publicTrackPlaceholder: "提交编号 / 物流单号 / 客户码...",
+        publicTrackSearch: "查询",
+        backToLogin: "返回登录",
         yourCode: "您的访问码",
         codeNote: "请妥善保存此访问码！以后可随时使用，并可切换任意语言查看与编辑您的订单。",
         logout: "退出登录",
@@ -396,6 +418,8 @@
         submitForm: "提交商品表单",
         formSaved: "商品信息已保存！🍉✨",
         lockedNotice: "仓库已开始处理此商品，详情已锁定。您仍可修改单号或申请退货。",
+        deleteReturBtn: "删除退货记录",
+        deleteBlockedNotice: "商品已称重/装入行李箱/已分拣，仅限管理员删除。",
         changeResi: "修改单号",
         oldResi: "原单号",
         newResi: "新单号",
@@ -430,6 +454,19 @@
     ];
 
     const LOCKED_STATUSES = ["Sampai Gudang", "Ditimbang", "Siap Kirim / Selesai"];
+    const WEIGHED_OR_PACKED_STATUSES = ["Ditimbang", "Siap Kirim / Selesai"];
+
+    function isReturSubmission(sub) {
+      return Boolean(sub && (sub.status === "Retur" || sub.returInfo));
+    }
+
+    function canCustomerDeleteSubmission(sub) {
+      if (!sub) return false;
+      if (!isReturSubmission(sub)) return false;
+      if (WEIGHED_OR_PACKED_STATUSES.includes(sub.status)) return false;
+      if (sub.sortedChecked) return false;
+      return true;
+    }
 
     function createInitialData() {
       return {
@@ -644,6 +681,24 @@
       const [loginError, setLoginError] = useState("");
       const [issuedCodeBanner, setIssuedCodeBanner] = useState("");
 
+      // Public tracking mode without login (?track=... or ?code=... or button)
+      const [publicTrackOpen, setPublicTrackOpen] = useState(() => {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          return Boolean(params.get("track") || params.get("code"));
+        } catch {
+          return false;
+        }
+      });
+      const [publicQuery, setPublicQuery] = useState(() => {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          return params.get("track") || params.get("code") || "";
+        } catch {
+          return "";
+        }
+      });
+
       const [lang, setLang] = useState("id");
       const [route, setRoute] = useState(null);
       const [activeTab, setActiveTab] = useState("form");
@@ -745,17 +800,15 @@
         const unsubSubs = subsCol.onSnapshot(
           (querySnap) => {
             setCloudStatus("connected");
-            if (!querySnap.empty) {
-              const cloudSubs = [];
-              querySnap.forEach((doc) => {
-                cloudSubs.push({ ...doc.data(), id: doc.id });
-              });
-              cloudSubs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-              setDb((prev) => ({
-                ...prev,
-                submissions: cloudSubs,
-              }));
-            }
+            const cloudSubs = [];
+            querySnap.forEach((doc) => {
+              cloudSubs.push({ ...doc.data(), id: doc.id });
+            });
+            cloudSubs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            setDb((prev) => ({
+              ...prev,
+              submissions: cloudSubs.length > 0 ? cloudSubs : prev.submissions,
+            }));
           },
           (err) => {
             setCloudStatus("error");
@@ -785,6 +838,15 @@
           .doc(subObj.id)
           .set(subObj, { merge: true })
           .catch((err) => console.error("Sync submission error:", err));
+      }
+
+      function deleteSubmissionFromCloud(subId) {
+        const fs = firestoreRef.current;
+        if (!fs || !subId) return;
+        fs.collection("wh_submissions")
+          .doc(subId)
+          .delete()
+          .catch((err) => console.error("Delete submission error:", err));
       }
 
       useEffect(() => {
@@ -828,6 +890,27 @@
         const pad = (n) => String(n).padStart(2, "0");
         const formatted = `${pad(now.getDate())} ${now.toLocaleString("id-ID", { month: "short" })} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
         return `${actionText || "Diupdate"} oleh ${actorLabel} - ${formatted}`;
+      }
+
+      function handleDeleteSubmission(sub) {
+        if (!sub || !session) return;
+        if (session.role === "customer") {
+          if (sub.customerCode !== session.code) return;
+          if (!canCustomerDeleteSubmission(sub)) {
+            alert(t.deleteBlockedNotice);
+            return;
+          }
+        }
+        const ok = window.confirm(
+          `Hapus data barang milik ${sub.customerName} (${sub.resi || sub.id}) yang retur / tidak jadi kirim?`
+        );
+        if (!ok) return;
+
+        setDb((prev) => ({
+          ...prev,
+          submissions: prev.submissions.filter((s) => s.id !== sub.id),
+        }));
+        deleteSubmissionFromCloud(sub.id);
       }
 
       function handleLoginSubmit(e) {
@@ -1239,6 +1322,17 @@
         setSyncStatusMsg(`Berhasil mengirim ${db.submissions.length} data lokal ke Firebase Firestore!`);
       }
 
+      const publicMatches = useMemo(() => {
+        const q = (publicQuery || "").trim().toLowerCase();
+        if (!q) return [];
+        return db.submissions.filter((s) =>
+          (s.id || "").toLowerCase() === q ||
+          (s.resi || "").toLowerCase() === q ||
+          (s.customerCode || "").toLowerCase() === q ||
+          (s.resi || "").toLowerCase().includes(q)
+        );
+      }, [db.submissions, publicQuery]);
+
       const visibleSubmissions = useMemo(() => {
         if (!route || route === "usa-cargo" || !session) return [];
         let list = db.submissions.filter((s) => s.route === route);
@@ -1377,6 +1471,147 @@
       }
 
       if (!session) {
+        if (publicTrackOpen) {
+          return (
+            <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
+              <div className="bg-white/95 backdrop-blur border-2 border-melon-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-melon-100 pb-4">
+                  <div>
+                    <span className="text-xs font-bold text-rind-500 uppercase">WH By Markyours_here</span>
+                    <h1 className="font-display text-2xl font-bold text-melon-500">{t.publicTrackTitle} 🍉</h1>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPublicTrackOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-melon-50 hover:bg-melon-100 border border-melon-200 text-xs font-bold text-melon-500 cursor-pointer"
+                  >
+                    ← {t.backToLogin}
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-600 leading-relaxed">{t.publicTrackSub}</p>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={publicQuery}
+                    onChange={(e) => setPublicQuery(e.target.value)}
+                    placeholder={t.publicTrackPlaceholder}
+                    className="flex-1 px-4 py-2.5 rounded-xl border-2 border-melon-200 focus:border-melon-400 focus:outline-none text-sm bg-melon-50/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {}}
+                    className="px-6 py-2.5 rounded-xl bg-melon-400 text-white font-bold text-xs cursor-pointer"
+                  >
+                    🔍 {t.publicTrackSearch}
+                  </button>
+                </div>
+
+                {publicQuery.trim() && publicMatches.length === 0 && (
+                  <div className="p-4 rounded-2xl bg-sun-50 border border-sun-200 text-xs text-amber-900">
+                    Data dengan kata kunci <strong>{publicQuery}</strong> belum ditemukan. Pastikan ID kiriman, nomor resi, atau kode customer sudah benar.
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {publicMatches.map((sub) => {
+                    const calc = computeSubmissionTotal(sub, db.tripConfig);
+                    const allowedPhotoKeys =
+                      sub.route === "china-indo"
+                        ? ["arrival", "indoItem", "indoPack"]
+                        : ["arrival", "scale"];
+                    const visiblePhotos = allowedPhotoKeys.flatMap((k) =>
+                      (sub.photos?.[k] || []).map((src, idx) => ({
+                        key: `${k}-${idx}`,
+                        src,
+                        label:
+                          k === "arrival"
+                            ? "Foto Datang"
+                            : k === "indoItem"
+                            ? "Barang di Indo"
+                            : k === "indoPack"
+                            ? "Packing di Indo"
+                            : "Foto Timbangan",
+                      }))
+                    );
+
+                    return (
+                      <div key={sub.id} className="p-5 rounded-2xl bg-melon-50/40 border-2 border-melon-200 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-melon-100 pb-2">
+                          <div>
+                            <div className="font-display font-bold text-base text-gray-800">
+                              {sub.customerName} <span className="text-xs text-melon-500">({sub.id})</span>
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Jalur: <strong>{sub.route === "china-indo" ? "HC China - Indo" : "HC Indo - China"}</strong> • Resi: <strong>{sub.resi || "-"}</strong>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 rounded-full bg-rind-100 text-rind-500 text-xs font-bold">
+                            {sub.status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div className="p-3 rounded-xl bg-white border border-melon-100">
+                            <div className="text-gray-500">Total Berat</div>
+                            <div className="font-bold text-sm text-gray-800">{calc.totalGrams} g</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-melon-100">
+                            <div className="text-gray-500">Perkiraan Tagihan</div>
+                            <div className="font-bold text-sm text-melon-500">{formatIdr(calc.totalIdr)}</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-melon-100">
+                            <div className="text-gray-500">Sisa / Status Bayar</div>
+                            <div className="font-bold text-sm text-gray-800">{formatIdr(calc.remaining)} ({sub.paymentStatus})</div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="text-xs font-bold text-gray-700">Detail Barang:</div>
+                          {(sub.items || []).map((it) => (
+                            <div key={it.id} className="p-3 rounded-xl bg-white border border-melon-100 text-xs space-y-1">
+                              <div className="font-bold text-gray-800">
+                                {it.name} <span className="text-melon-500">x{it.qty}</span> • Berat: {it.weightGram || 0} g
+                              </div>
+                              <div className="text-gray-600">Kategori: {it.category}</div>
+                              {it.goodsHandling && <div className="text-gray-600">Kemasan: {it.goodsHandling}</div>}
+                              {it.paperOption && <div className="text-gray-600">Paperbased: {it.paperOption}</div>}
+                              {it.liquidMl && <div className="text-gray-600">Volume: {it.liquidMl} ml</div>}
+                              {it.elecMah && <div className="text-gray-600">Baterai: {it.elecType} ({it.elecMah})</div>}
+                              {(it.photos || []).length > 0 && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  {it.photos.map((src, i) => (
+                                    <img key={i} src={src} alt="barang" className="w-20 h-20 object-cover rounded-xl border border-melon-200" />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {visiblePhotos.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="text-xs font-bold text-gray-700">Foto Proses Barang:</div>
+                            <div className="flex flex-wrap gap-3">
+                              {visiblePhotos.map((ph) => (
+                                <div key={ph.key} className="text-center">
+                                  <img src={ph.src} alt={ph.label} className="w-24 h-24 object-cover rounded-xl border border-melon-200" />
+                                  <div className="text-[10px] text-gray-600 mt-0.5">{ph.label}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="min-h-screen flex items-center justify-center p-4">
             <div className="bg-white/95 backdrop-blur border-2 border-melon-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-xl">
@@ -1441,6 +1676,13 @@
                     className="w-full py-3 rounded-2xl bg-gradient-to-r from-melon-400 to-melon-500 hover:opacity-95 text-white font-display font-semibold text-base shadow-md cursor-pointer"
                   >
                     {t.loginBtn} 🍉
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPublicTrackOpen(true)}
+                    className="w-full py-2.5 rounded-2xl bg-rind-50 hover:bg-rind-100 border border-rind-200 text-rind-500 font-bold text-xs cursor-pointer"
+                  >
+                    🔎 {t.publicTrackBtn}
                   </button>
                 </form>
               ) : (
@@ -2183,12 +2425,23 @@
                       {visibleSubmissions.map((sub) => {
                         const locked = session.role === "customer" && LOCKED_STATUSES.includes(sub.status);
                         const nextTrip = isNextTrip(sub, db.tripConfig);
+                        const isRetur = isReturSubmission(sub);
+                        const custCanDelete = canCustomerDeleteSubmission(sub);
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?track=${encodeURIComponent(sub.id)}`;
+
                         return (
                           <tr key={sub.id} className="odd:bg-white even:bg-melon-50/30 align-top">
                             <td className="p-2.5 border border-melon-100 min-w-[160px]">
                               <div className="font-bold text-gray-800">{sub.customerName}</div>
-                              <div className="text-[11px] text-gray-500">{sub.customerCode} • {sub.phone}</div>
+                              <div className="text-[11px] text-gray-500">{sub.id} • {sub.customerCode} • {sub.phone}</div>
                               <div className="text-[11px] text-gray-600 mt-0.5">Upload: {sub.uploaderName}</div>
+                              <button
+                                type="button"
+                                onClick={() => copyReceiptText(`track-${sub.id}`, shareUrl)}
+                                className="mt-1 px-2 py-0.5 rounded bg-rind-50 hover:bg-rind-100 border border-rind-200 text-[10px] font-bold text-rind-500 cursor-pointer"
+                              >
+                                {copiedKey === `track-${sub.id}` ? "Link Tersalin!" : "Salin Link Pantau"}
+                              </button>
                               {route === "indo-china" && sub.chinaRecipient?.address && (
                                 <div className="mt-1.5 p-2 rounded-lg bg-sun-50 border border-sun-200 text-[11px] space-y-0.5">
                                   <div><strong>Penerima:</strong> {sub.chinaRecipient.name}</div>
@@ -2403,7 +2656,7 @@
                               )}
                             </td>
 
-                            <td className="p-2.5 border border-melon-100 min-w-[130px] space-y-1.5">
+                            <td className="p-2.5 border border-melon-100 min-w-[140px] space-y-1.5">
                               {locked && (
                                 <div className="text-[10px] text-amber-800 bg-sun-50 p-1.5 rounded border border-sun-200">
                                   🔒 {t.lockedNotice}
@@ -2428,6 +2681,32 @@
                               >
                                 {t.requestRetur}
                               </button>
+
+                              {session.role === "admin" && isRetur && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSubmission(sub)}
+                                  className="w-full py-1 px-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] cursor-pointer"
+                                >
+                                  🗑️ {t.deleteReturBtn}
+                                </button>
+                              )}
+
+                              {session.role === "customer" && isRetur && (
+                                custCanDelete ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSubmission(sub)}
+                                    className="w-full py-1 px-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] cursor-pointer"
+                                  >
+                                    🗑️ {t.deleteReturBtn}
+                                  </button>
+                                ) : (
+                                  <div className="text-[10px] text-red-700 bg-red-50 p-1.5 rounded border border-red-200">
+                                    {t.deleteBlockedNotice}
+                                  </div>
+                                )
+                              )}
                             </td>
                           </tr>
                         );
