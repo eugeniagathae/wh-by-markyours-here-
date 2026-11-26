@@ -1002,6 +1002,40 @@
           .catch((err) => console.error("Delete submission error:", err));
       }
 
+      function pushLocalDataToCloud() {
+        const fs = firestoreRef.current;
+        if (!fs) {
+          setSyncStatusMsg("Firebase belum terhubung.");
+          return;
+        }
+        syncMetaToCloud(db.tripConfig, db.customers);
+        (db.submissions || []).forEach((s) => syncSubmissionToCloud(s));
+        (db.deletedLogs || []).forEach((l) => syncActivityLogToCloud(l));
+        setSyncStatusMsg("Data lokal berhasil dikirim ke Firebase!");
+      }
+
+      function saveFirebaseConfig() {
+        setSyncStatusMsg("");
+        if (!fbConfigText.trim()) {
+          try {
+            window.localStorage.removeItem(FB_CONFIG_KEY);
+          } catch (e) {}
+          setSyncStatusMsg("Override Firebase dihapus. Muat ulang halaman untuk menerapkan.");
+          return;
+        }
+        try {
+          const parsed = JSON.parse(fbConfigText.trim());
+          if (!parsed || !parsed.apiKey || !parsed.projectId) {
+            setSyncStatusMsg("JSON tidak valid: wajib menyertakan apiKey dan projectId.");
+            return;
+          }
+          safeSetStorage(FB_CONFIG_KEY, JSON.stringify(parsed));
+          setSyncStatusMsg("Konfigurasi Firebase tersimpan! Muat ulang halaman untuk menyambungkan.");
+        } catch (err) {
+          setSyncStatusMsg("Format JSON tidak valid.");
+        }
+      }
+
       useEffect(() => {
         let current = 0;
         const timer = setInterval(() => {
@@ -1835,37 +1869,62 @@
         URL.revokeObjectURL(url);
       }
 
-      // PDF gabungan khusus Bea Cukai: tanpa nama orang, hanya Nama Barang, Bukti Beli Barang, Harga Barang, dan Resi Barang
+      // PDF gabungan khusus: Nama Barang, Bukti Beli Barang, Harga Barang, dan Resi Barang saja
       function downloadCombinedPdf() {
         const routeLabel = route === "china-indo" ? "HC China - Indo" : "HC Indo - China";
 
-        const allRowsHtml = visibleSubmissions
-          .flatMap((sub) => {
-            const subArrivalPhotos = sub.photos?.arrival || [];
-            const resiText = (sub.resi || "").trim() || "-";
+        const customerSectionsHtml = aggregatedBillingByCustomer
+          .map((grp) => {
+            const rowsHtml = grp.subs
+              .flatMap(({ sub }) => {
+                const subArrivalPhotos = sub.photos?.arrival || [];
+                const resiText = (sub.resi || "").trim() || "-";
 
-            return (sub.items || []).map((it) => {
-              const itemPrice = getItemPriceValue(it);
-              const proofPhotos = [...(it.photos || []), ...subArrivalPhotos];
-              const proofHtml =
-                proofPhotos.length > 0
-                  ? proofPhotos
-                      .map(
-                        (src, idx) =>
-                          `<img src="${src}" alt="Bukti beli ${escapeHtml(it.name)} ${idx + 1}" class="proof-img" />`
-                      )
-                      .join("")
-                  : `<span class="muted">-</span>`;
+                return (sub.items || []).map((it) => {
+                  const itemPrice = getItemPriceValue(it);
+                  const proofPhotos = [...(it.photos || []), ...subArrivalPhotos];
+                  const proofHtml =
+                    proofPhotos.length > 0
+                      ? proofPhotos
+                          .map(
+                            (src, idx) =>
+                              `<img src="${src}" alt="Bukti beli ${escapeHtml(it.name)} ${idx + 1}" class="proof-img" />`
+                          )
+                          .join("")
+                      : `<span class="muted">-</span>`;
 
-              return `
-                <tr>
-                  <td>${escapeHtml(it.name)} <span class="muted">(x${it.qty})</span></td>
-                  <td><div class="proof-wrap">${proofHtml}</div></td>
-                  <td style="text-align:right;">${formatAmount(itemPrice)}</td>
-                  <td>${escapeHtml(resiText)}</td>
-                </tr>
-              `;
-            });
+                  return `
+                    <tr>
+                      <td>${escapeHtml(it.name)} <span class="muted">(x${it.qty})</span></td>
+                      <td><div class="proof-wrap">${proofHtml}</div></td>
+                      <td style="text-align:right;">${formatAmount(itemPrice)}</td>
+                      <td>${escapeHtml(resiText)}</td>
+                    </tr>
+                  `;
+                });
+              })
+              .join("");
+
+            return `
+              <div class="cust-box">
+                <div class="cust-header">
+                  <strong>${escapeHtml(grp.customerName)}</strong> <span class="muted">(${escapeHtml(grp.customerCode)})</span>
+                </div>
+                <table class="items-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 28%;">Nama Barang</th>
+                      <th style="width: 34%;">Bukti Beli Barang</th>
+                      <th style="width: 18%; text-align:right;">Harga Barang</th>
+                      <th style="width: 20%;">Resi Barang</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rowsHtml || `<tr><td colspan="4" class="muted">Tidak ada barang</td></tr>`}
+                  </tbody>
+                </table>
+              </div>
+            `;
           })
           .join("");
 
@@ -1874,15 +1933,16 @@
           <html lang="id">
           <head>
             <meta charset="UTF-8" />
-            <title>PDF Bea Cukai - ${escapeHtml(routeLabel)}</title>
+            <title>PDF Gabungan Barang & Bukti Beli - ${escapeHtml(routeLabel)}</title>
             <style>
               body { font-family: Arial, sans-serif; color: #222; padding: 20px; font-size: 12px; }
               h1 { margin: 0 0 4px 0; font-size: 18px; color: #d6285a; }
               .meta { margin-bottom: 14px; color: #555; font-size: 11px; }
+              .cust-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; page-break-inside: avoid; }
+              .cust-header { font-size: 13px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
               .items-table { width: 100%; border-collapse: collapse; font-size: 11px; }
               .items-table th, .items-table td { border: 1px solid #e2e2e2; padding: 6px 8px; text-align: left; vertical-align: middle; }
               .items-table th { background: #fff5f7; color: #333; }
-              .items-table tr { page-break-inside: avoid; }
               .proof-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
               .proof-img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
               .muted { color: #777; }
@@ -1898,20 +1958,8 @@
               </button>
             </div>
             <h1>WH By Markyours_here — Rekap Barang &amp; Bukti Beli (${escapeHtml(routeLabel)})</h1>
-            <div class="meta">Dicetak pada: ${escapeHtml(new Date().toLocaleString("id-ID"))}</div>
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th style="width: 28%;">Nama Barang</th>
-                  <th style="width: 34%;">Bukti Beli Barang</th>
-                  <th style="width: 18%; text-align:right;">Harga Barang</th>
-                  <th style="width: 20%;">Resi Barang</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${allRowsHtml || `<tr><td colspan="4" class="muted">Tidak ada barang</td></tr>`}
-              </tbody>
-            </table>
+            <div class="meta">Dicetak pada: ${escapeHtml(new Date().toLocaleString("id-ID"))} • Gabungan per Customer (${aggregatedBillingByCustomer.length})</div>
+            ${customerSectionsHtml || "<p>Tidak ada data untuk dicetak.</p>"}
           </body>
           </html>
         `;
@@ -2986,4 +3034,290 @@
                                     <div className="font-bold text-gray-800">{it.name} <span className="text-melon-500">x{it.qty}</span></div>
                                     {itemPrice > 0 && (
                                       <div className="text-[11px] text-gray-700">
-                                        {t.itemTotalPrice} (Info): {format
+                                        {t.itemTotalPrice} (Info): {formatAmount(itemPrice)}
+                                      </div>
+                                    )}
+                                    <div className="text-[11px] text-gray-600">Kategori: {it.category}</div>
+                                    {it.category === "goods" && it.goodsHandling && (
+                                      <div className="text-[11px] text-gray-600">Kemasan: {it.goodsHandling}</div>
+                                    )}
+                                    {it.category === "paperbased" && it.paperOption && (
+                                      <div className="text-[11px] text-gray-600">Paperbased: {it.paperOption}</div>
+                                    )}
+                                    {it.category === "liquid" && it.liquidMl && (
+                                      <div className="text-[11px] text-gray-600">Volume: {it.liquidMl} ml</div>
+                                    )}
+                                    {it.category === "electronic" && (
+                                      <div className="text-[11px] text-gray-600">
+                                        {it.elecType} {it.elecMah ? `(${it.elecMah})` : ""}
+                                      </div>
+                                    )}
+                                    {route === "indo-china" && it.category === "snack" && (
+                                      <div className="mt-1 p-1.5 rounded bg-sun-100 text-[10px] text-amber-950">
+                                        <strong>Caution Snack:</strong> {t.snackCautionPoints.join(" ")}
+                                      </div>
+                                    )}
+                                    {(it.photos || []).length > 0 && (
+                                      <div className="flex gap-1 mt-1">
+                                        {it.photos.map((src, i) => (
+                                          <img key={i} src={src} alt="item" className="w-10 h-10 object-cover rounded border" />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[150px]">
+                              {session.role === "admin" ? (
+                                <select
+                                  value={sub.status}
+                                  onChange={(e) => updateSubmission(sub.id, { status: e.target.value })}
+                                  className="w-full px-2 py-1 rounded-lg border border-melon-200 text-xs bg-white font-semibold"
+                                >
+                                  {STATUS_LIST.map((st) => <option key={st} value={st}>{st}</option>)}
+                                </select>
+                              ) : (
+                                <span className="inline-block px-2 py-0.5 rounded-full bg-melon-100 text-melon-500 font-bold text-[11px]">
+                                  {sub.status}
+                                </span>
+                              )}
+
+                              <div className="mt-1.5">
+                                {session.role === "admin" ? (
+                                  <select
+                                    value={sub.tripOverride || "auto"}
+                                    onChange={(e) => updateSubmission(sub.id, { tripOverride: e.target.value })}
+                                    className="w-full px-2 py-1 rounded-lg border border-sun-200 text-[11px] bg-sun-50"
+                                  >
+                                    <option value="auto">Otomatis ({nextTrip ? t.tripNext : t.tripActive})</option>
+                                    <option value="ikut trip ini">ikut trip ini</option>
+                                    <option value="ikut next trip">ikut next trip</option>
+                                  </select>
+                                ) : (
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    nextTrip ? "bg-sun-100 text-amber-900" : "bg-rind-100 text-rind-500"
+                                  }`}>
+                                    {nextTrip ? t.tripNext : t.tripActive}
+                                  </span>
+                                )}
+                              </div>
+
+                              {sub.returInfo && (
+                                <div className="mt-1.5 p-1.5 rounded bg-red-50 border border-red-200 text-[10px] text-red-700">
+                                  <strong>{sub.returInfo.type}</strong>
+                                  {sub.returInfo.newResi && <div>Resi baru: {sub.returInfo.newResi}</div>}
+                                  {sub.returInfo.reason && <div>Ket: {sub.returInfo.reason}</div>}
+                                </div>
+                              )}
+                            </td>
+
+                            {route === "china-indo" && session.role === "admin" && (
+                              <td className="p-2.5 border border-melon-100 min-w-[110px]">
+                                <select
+                                  value={sub.city || "Shanghai"}
+                                  onChange={(e) => updateSubmission(sub.id, { city: e.target.value })}
+                                  className="w-full px-2 py-1 rounded-lg border border-melon-200 text-xs bg-white"
+                                >
+                                  {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              </td>
+                            )}
+
+                            <td className="p-2.5 border border-melon-100 min-w-[140px]">
+                              <label className="flex items-center gap-1.5 font-semibold text-gray-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  disabled={session.role !== "admin"}
+                                  checked={Boolean(sub.sortedChecked)}
+                                  onChange={(e) => updateSubmission(sub.id, { sortedChecked: e.target.checked })}
+                                  className="accent-rind-500"
+                                />
+                                <span>Sudah Sortir</span>
+                              </label>
+                              <div className="mt-1.5">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="text"
+                                    value={sub.indoResi || ""}
+                                    onChange={(e) => updateSubmission(sub.id, { indoResi: e.target.value })}
+                                    placeholder="Resi Indo..."
+                                    className="w-full px-2 py-1 rounded-lg border border-melon-200 text-[11px] bg-white"
+                                  />
+                                ) : (
+                                  <div className="text-[11px] text-gray-600">Resi Indo: {sub.indoResi || "-"}</div>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[210px]">
+                              {sub.shortageNote && (
+                                <div className="mb-1.5 px-2 py-1 rounded-lg bg-sun-100 border border-sun-300 text-[10px] font-bold text-amber-950">
+                                  ⚠️ Ada Catatan/Komplain: {sub.shortageNote}
+                                </div>
+                              )}
+                              {session.role === "admin" && (
+                                <input
+                                  type="text"
+                                  value={sub.shortageNote || ""}
+                                  onChange={(e) => updateSubmission(sub.id, { shortageNote: e.target.value })}
+                                  placeholder="Ket. barang kurang / catatan..."
+                                  className="w-full px-2 py-1 rounded-lg border border-melon-200 text-[11px] bg-white mb-1.5"
+                                />
+                              )}
+
+                              {route === "china-indo" ? (
+                                <div className="space-y-1.5">
+                                  {[
+                                    { key: "arrival", label: "Foto Datang" },
+                                    ...(session.role === "admin" ? [{ key: "scale", label: "Foto Timbangan" }] : []),
+                                    { key: "indoItem", label: "Barang di Indo" },
+                                    { key: "indoPack", label: "Packing di Indo" },
+                                  ].map((st) => {
+                                    const draftList = subPending[st.key] || [];
+                                    return (
+                                      <div key={st.key}>
+                                        <div className="text-[10px] font-semibold text-gray-600">
+                                          {st.label} ({(sub.photos?.[st.key] || []).length} tersimpan{draftList.length > 0 ? `, +${draftList.length} draft` : ""})
+                                        </div>
+                                        {session.role === "admin" && (
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={(e) => {
+                                              handleStagePhotoDraftSelect(sub.id, st.key, e.target.files);
+                                              e.target.value = "";
+                                            }}
+                                            className="text-[10px] w-full"
+                                          />
+                                        )}
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {(sub.photos?.[st.key] || []).map((src, i) => (
+                                            <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border border-rind-400" />
+                                          ))}
+                                          {draftList.map((src, i) => (
+                                            <img
+                                              key={`draft-${i}`}
+                                              src={src}
+                                              alt={`draft-${st.label}`}
+                                              className="w-8 h-8 object-cover rounded border-2 border-amber-400 opacity-85"
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {[
+                                    { key: "arrival", label: "Foto Datang" },
+                                    { key: "scale", label: "Foto Timbangan" },
+                                    ...(session.role === "admin" ? [{ key: "koperPack", label: "Foto Packing Koper" }] : []),
+                                  ].map((st) => {
+                                    const draftList = subPending[st.key] || [];
+                                    return (
+                                      <div key={st.key}>
+                                        <div className="text-[10px] font-semibold text-gray-600">
+                                          {st.label} ({(sub.photos?.[st.key] || []).length} tersimpan{draftList.length > 0 ? `, +${draftList.length} draft` : ""})
+                                        </div>
+                                        {session.role === "admin" && (
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={(e) => {
+                                              handleStagePhotoDraftSelect(sub.id, st.key, e.target.files);
+                                              e.target.value = "";
+                                            }}
+                                            className="text-[10px] w-full"
+                                          />
+                                        )}
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {(sub.photos?.[st.key] || []).map((src, i) => (
+                                            <img key={i} src={src} alt={st.label} className="w-8 h-8 object-cover rounded border border-rind-400" />
+                                          ))}
+                                          {draftList.map((src, i) => (
+                                            <img
+                                              key={`draft-${i}`}
+                                              src={src}
+                                              alt={`draft-${st.label}`}
+                                              className="w-8 h-8 object-cover rounded border-2 border-amber-400 opacity-85"
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {session.role === "admin" && pendingCount > 0 && (
+                                <div className="mt-2 p-2 rounded-xl bg-sun-50 border border-sun-300 space-y-1.5">
+                                  <div className="text-[10px] font-bold text-amber-900">
+                                    {pendingCount} foto baru belum disimpan
+                                  </div>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSavePendingPhotos(sub.id)}
+                                      className="flex-1 py-1 px-2 rounded-lg bg-rind-500 hover:bg-rind-600 text-white font-bold text-[10px] cursor-pointer"
+                                    >
+                                      💾 {t.savePhotosBtn}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelPendingPhotos(sub.id)}
+                                      className="py-1 px-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-[10px] cursor-pointer"
+                                    >
+                                      Batal
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {savedPhotoNoticeSubId === sub.id && (
+                                <div className="mt-1.5 px-2 py-1 rounded-lg bg-rind-100 text-rind-500 font-bold text-[10px]">
+                                  ✅ {t.photosSavedToast}
+                                </div>
+                              )}
+
+                              <div className="mt-2 pt-1.5 border-t border-melon-100 space-y-1">
+                                <div className="text-[10px] font-bold text-gray-700">{t.activityTitle}</div>
+                                {logs.slice(0, 2).map((lg) => (
+                                  <div key={lg.id} className="text-[10px] text-gray-600 bg-white/90 px-2 py-1 rounded border border-melon-100">
+                                    <span className="font-bold text-melon-500">[{lg.action}]</span>{" "}
+                                    <strong>{lg.actor}</strong> ({lg.role}) • {lg.detail}{" "}
+                                    <span className="text-gray-400">({lg.timeLabel})</span>
+                                  </div>
+                                ))}
+                                {logs.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLogModalSubId(sub.id)}
+                                    className="text-[10px] font-bold text-rind-500 hover:underline cursor-pointer"
+                                  >
+                                    {t.viewAllLogs} ({logs.length})
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="p-2.5 border border-melon-100 min-w-[140px] space-y-1.5">
+                              {locked && (
+                                <div className="text-[10px] text-amber-800 bg-sun-50 p-1.5 rounded border border-sun-200">
+                                  🔒 {t.lockedNotice}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => { setChangeResiModal(sub.id); setNewResiInput(sub.resi || ""); }}
+                                className="w-full py-1 px-2 rounded-lg bg-melon-100 hover:bg-melon-200 text-melon-500 font-bold text-[11px] cursor-pointer"
+                              >
+                                {t.changeResi}
+                              </button>
+                              <button
+                                type="button"
+                                onClick
