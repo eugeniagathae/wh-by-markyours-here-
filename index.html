@@ -185,7 +185,7 @@
         addItem: "+ Tambah Barang",
         itemName: "Nama Barang",
         itemQty: "Jumlah",
-        itemPrice: "Harga Barang (Satuan / IDR)",
+        itemTotalPrice: "Total Harga Barang",
         itemCategory: "Kategori Barang",
         catGoods: "Barang",
         catPaperbased: "Paperbased",
@@ -296,7 +296,7 @@
         addItem: "+ Add Item",
         itemName: "Item Name",
         itemQty: "Qty",
-        itemPrice: "Item Price (Unit / IDR)",
+        itemTotalPrice: "Total Item Price",
         itemCategory: "Item Category",
         catGoods: "General Goods",
         catPaperbased: "Paperbased",
@@ -407,7 +407,7 @@
         addItem: "+ 添加商品",
         itemName: "商品名称",
         itemQty: "数量",
-        itemPrice: "商品单价（印尼盾 IDR）",
+        itemTotalPrice: "商品总价",
         itemCategory: "商品类别",
         catGoods: "普通商品",
         catPaperbased: "纸片/周边",
@@ -608,7 +608,7 @@
                 id: "ITM-1",
                 name: "Photocard Binder A5",
                 qty: 2,
-                unitPrice: 0,
+                totalItemPrice: 0,
                 category: "paperbased",
                 goodsHandling: "",
                 paperOption: "sealed_lineup",
@@ -664,7 +664,7 @@
                 id: "ITM-2",
                 name: "Keripik Singkong & Cup Noodle",
                 qty: 3,
-                unitPrice: 0,
+                totalItemPrice: 0,
                 category: "snack",
                 goodsHandling: "",
                 paperOption: "",
@@ -707,15 +707,19 @@
       });
     }
 
-    function formatIdr(num) {
-      return "Rp " + Math.round(Number(num || 0)).toLocaleString("id-ID");
+    function formatAmount(num) {
+      return Math.round(Number(num || 0)).toLocaleString("id-ID");
+    }
+
+    function getItemPriceValue(item) {
+      return Number(item?.totalItemPrice ?? item?.unitPrice ?? 0);
     }
 
     function computeSubmissionTotal(sub, tripConfig) {
       const cfg = tripConfig[sub.route] || { defaultRate: 180, yuanRate: 2200 };
       const totalGrams = (sub.items || []).reduce((acc, it) => acc + Number(it.weightGram || 0), 0);
       const itemsPriceTotal = (sub.items || []).reduce(
-        (acc, it) => acc + Math.max(1, Number(it.qty || 1)) * Number(it.unitPrice || 0),
+        (acc, it) => acc + getItemPriceValue(it),
         0
       );
       const rate = Number(sub.ratePerGram ?? cfg.defaultRate ?? 180);
@@ -827,7 +831,7 @@
             id: "new-1",
             name: "",
             qty: 1,
-            unitPrice: 0,
+            totalItemPrice: 0,
             category: "goods",
             goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
             paperOption: "sealed_no_lineup",
@@ -1053,10 +1057,10 @@
         if (prevGrams !== nextGrams) {
           changes.push(`Berat: ${prevGrams}g → ${nextGrams}g`);
         }
-        const prevPrice = (prevSub.items || []).reduce((a, b) => a + Math.max(1, Number(b.qty || 1)) * Number(b.unitPrice || 0), 0);
-        const nextPrice = (nextSub.items || []).reduce((a, b) => a + Math.max(1, Number(b.qty || 1)) * Number(b.unitPrice || 0), 0);
+        const prevPrice = (prevSub.items || []).reduce((a, b) => a + getItemPriceValue(b), 0);
+        const nextPrice = (nextSub.items || []).reduce((a, b) => a + getItemPriceValue(b), 0);
         if (prevPrice !== nextPrice) {
-          changes.push(`Harga barang: ${formatIdr(prevPrice)} → ${formatIdr(nextPrice)}`);
+          changes.push(`Total harga barang: ${formatAmount(prevPrice)} → ${formatAmount(nextPrice)}`);
         }
         if (Number(prevSub.ratePerGram || 0) !== Number(nextSub.ratePerGram || 0)) {
           changes.push(`Tarif/g: ${nextSub.ratePerGram}`);
@@ -1204,7 +1208,7 @@
               id: "itm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
               name: "",
               qty: 1,
-              unitPrice: 0,
+              totalItemPrice: 0,
               category: route === "indo-china" ? "snack" : "goods",
               goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
               paperOption: "sealed_no_lineup",
@@ -1279,7 +1283,7 @@
           id: it.id || `ITM-${Date.now()}-${i}`,
           name: it.name.trim() || `Barang #${i + 1}`,
           qty: Math.max(1, Number(it.qty || 1)),
-          unitPrice: Math.max(0, Number(it.unitPrice || 0)),
+          totalItemPrice: Math.max(0, getItemPriceValue(it)),
           weightGram: Number(it.weightGram || 0),
         }));
 
@@ -1352,7 +1356,7 @@
               id: "itm-" + Date.now(),
               name: "",
               qty: 1,
-              unitPrice: 0,
+              totalItemPrice: 0,
               category: route === "indo-china" ? "snack" : "goods",
               goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
               paperOption: "sealed_no_lineup",
@@ -1546,7 +1550,7 @@
         const headers = [
           "ID", "Jalur", "Tanggal", "Kode Cust", "Nama", "No HP", "Pengupload",
           "Resi", "Status", "Kloter", "Kota", "Sortir", "Resi Indo",
-          "Berat (g)", "Harga Barang (IDR)", "Tarif/g", "Biaya Tambahan", "Total (IDR)", "DP", "Sisa", "Status Bayar", "Catatan", "Log Terakhir"
+          "Berat (g)", "Total Harga Barang", "Tarif/g", "Biaya Tambahan", "Total", "DP", "Sisa", "Status Bayar", "Catatan", "Log Terakhir"
         ];
         const rows = visibleSubmissions.map((s) => {
           const calc = computeSubmissionTotal(s, db.tripConfig);
@@ -1889,43 +1893,46 @@
                             <div className="font-bold text-sm text-gray-800">{calc.totalGrams} g</div>
                           </div>
                           <div className="p-3 rounded-xl bg-white border border-melon-100">
-                            <div className="text-gray-500">Harga Barang</div>
-                            <div className="font-bold text-sm text-gray-800">{formatIdr(calc.itemsPriceTotal)}</div>
+                            <div className="text-gray-500">{t.itemTotalPrice}</div>
+                            <div className="font-bold text-sm text-gray-800">{formatAmount(calc.itemsPriceTotal)}</div>
                           </div>
                           <div className="p-3 rounded-xl bg-white border border-melon-100">
                             <div className="text-gray-500">Perkiraan Tagihan</div>
-                            <div className="font-bold text-sm text-melon-500">{formatIdr(calc.totalIdr)}</div>
+                            <div className="font-bold text-sm text-melon-500">{formatAmount(calc.totalIdr)}</div>
                           </div>
                           <div className="p-3 rounded-xl bg-white border border-melon-100">
                             <div className="text-gray-500">Sisa / Status Bayar</div>
-                            <div className="font-bold text-sm text-gray-800">{formatIdr(calc.remaining)} ({sub.paymentStatus})</div>
+                            <div className="font-bold text-sm text-gray-800">{formatAmount(calc.remaining)} ({sub.paymentStatus})</div>
                           </div>
                         </div>
 
                         <div className="space-y-1.5">
                           <div className="text-xs font-bold text-gray-700">Detail Barang:</div>
-                          {(sub.items || []).map((it) => (
-                            <div key={it.id} className="p-3 rounded-xl bg-white border border-melon-100 text-xs space-y-1">
-                              <div className="font-bold text-gray-800">
-                                {it.name} <span className="text-melon-500">x{it.qty}</span>
-                                {Number(it.unitPrice || 0) > 0 && ` • Harga: ${formatIdr(it.unitPrice)}/pcs`}
-                                {" • Berat: "}
-                                {it.weightGram || 0} g
-                              </div>
-                              <div className="text-gray-600">Kategori: {it.category}</div>
-                              {it.goodsHandling && <div className="text-gray-600">Kemasan: {it.goodsHandling}</div>}
-                              {it.paperOption && <div className="text-gray-600">Paperbased: {it.paperOption}</div>}
-                              {it.liquidMl && <div className="text-gray-600">Volume: {it.liquidMl} ml</div>}
-                              {it.elecMah && <div className="text-gray-600">Baterai: {it.elecType} ({it.elecMah})</div>}
-                              {(it.photos || []).length > 0 && (
-                                <div className="flex flex-wrap gap-2 pt-1">
-                                  {it.photos.map((src, i) => (
-                                    <img key={i} src={src} alt="barang" className="w-20 h-20 object-cover rounded-xl border border-melon-200" />
-                                  ))}
+                          {(sub.items || []).map((it) => {
+                            const itemPrice = getItemPriceValue(it);
+                            return (
+                              <div key={it.id} className="p-3 rounded-xl bg-white border border-melon-100 text-xs space-y-1">
+                                <div className="font-bold text-gray-800">
+                                  {it.name} <span className="text-melon-500">x{it.qty}</span>
+                                  {itemPrice > 0 && ` • ${t.itemTotalPrice}: ${formatAmount(itemPrice)}`}
+                                  {" • Berat: "}
+                                  {it.weightGram || 0} g
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                <div className="text-gray-600">Kategori: {it.category}</div>
+                                {it.goodsHandling && <div className="text-gray-600">Kemasan: {it.goodsHandling}</div>}
+                                {it.paperOption && <div className="text-gray-600">Paperbased: {it.paperOption}</div>}
+                                {it.liquidMl && <div className="text-gray-600">Volume: {it.liquidMl} ml</div>}
+                                {it.elecMah && <div className="text-gray-600">Baterai: {it.elecType} ({it.elecMah})</div>}
+                                {(it.photos || []).length > 0 && (
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    {it.photos.map((src, i) => (
+                                      <img key={i} src={src} alt="barang" className="w-20 h-20 object-cover rounded-xl border border-melon-200" />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
 
                         {visiblePhotos.length > 0 && (
@@ -2454,12 +2461,12 @@
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.itemPrice}</label>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.itemTotalPrice}</label>
                           <input
                             type="number"
                             min={0}
-                            value={item.unitPrice ?? 0}
-                            onChange={(e) => updateItemRow(idx, { unitPrice: e.target.value })}
+                            value={item.totalItemPrice ?? 0}
+                            onChange={(e) => updateItemRow(idx, { totalItemPrice: e.target.value })}
                             placeholder="0"
                             className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
                           />
@@ -2817,43 +2824,46 @@
                             </td>
 
                             <td className="p-2.5 border border-melon-100 min-w-[220px]">
-                              {(sub.items || []).map((it) => (
-                                <div key={it.id} className="mb-2 last:mb-0 pb-1.5 border-b last:border-b-0 border-melon-100">
-                                  <div className="font-bold text-gray-800">{it.name} <span className="text-melon-500">x{it.qty}</span></div>
-                                  {Number(it.unitPrice || 0) > 0 && (
-                                    <div className="text-[11px] text-gray-700">
-                                      Harga: {formatIdr(it.unitPrice)}/pcs ({formatIdr(Math.max(1, Number(it.qty || 1)) * Number(it.unitPrice || 0))})
-                                    </div>
-                                  )}
-                                  <div className="text-[11px] text-gray-600">Kategori: {it.category}</div>
-                                  {it.category === "goods" && it.goodsHandling && (
-                                    <div className="text-[11px] text-gray-600">Kemasan: {it.goodsHandling}</div>
-                                  )}
-                                  {it.category === "paperbased" && it.paperOption && (
-                                    <div className="text-[11px] text-gray-600">Paperbased: {it.paperOption}</div>
-                                  )}
-                                  {it.category === "liquid" && it.liquidMl && (
-                                    <div className="text-[11px] text-gray-600">Volume: {it.liquidMl} ml</div>
-                                  )}
-                                  {it.category === "electronic" && (
-                                    <div className="text-[11px] text-gray-600">
-                                      {it.elecType} {it.elecMah ? `(${it.elecMah})` : ""}
-                                    </div>
-                                  )}
-                                  {route === "indo-china" && it.category === "snack" && (
-                                    <div className="mt-1 p-1.5 rounded bg-sun-100 text-[10px] text-amber-950">
-                                      <strong>Caution Snack:</strong> {t.snackCautionPoints.join(" ")}
-                                    </div>
-                                  )}
-                                  {(it.photos || []).length > 0 && (
-                                    <div className="flex gap-1 mt-1">
-                                      {it.photos.map((src, i) => (
-                                        <img key={i} src={src} alt="item" className="w-10 h-10 object-cover rounded border" />
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                              {(sub.items || []).map((it) => {
+                                const itemPrice = getItemPriceValue(it);
+                                return (
+                                  <div key={it.id} className="mb-2 last:mb-0 pb-1.5 border-b last:border-b-0 border-melon-100">
+                                    <div className="font-bold text-gray-800">{it.name} <span className="text-melon-500">x{it.qty}</span></div>
+                                    {itemPrice > 0 && (
+                                      <div className="text-[11px] text-gray-700">
+                                        {t.itemTotalPrice}: {formatAmount(itemPrice)}
+                                      </div>
+                                    )}
+                                    <div className="text-[11px] text-gray-600">Kategori: {it.category}</div>
+                                    {it.category === "goods" && it.goodsHandling && (
+                                      <div className="text-[11px] text-gray-600">Kemasan: {it.goodsHandling}</div>
+                                    )}
+                                    {it.category === "paperbased" && it.paperOption && (
+                                      <div className="text-[11px] text-gray-600">Paperbased: {it.paperOption}</div>
+                                    )}
+                                    {it.category === "liquid" && it.liquidMl && (
+                                      <div className="text-[11px] text-gray-600">Volume: {it.liquidMl} ml</div>
+                                    )}
+                                    {it.category === "electronic" && (
+                                      <div className="text-[11px] text-gray-600">
+                                        {it.elecType} {it.elecMah ? `(${it.elecMah})` : ""}
+                                      </div>
+                                    )}
+                                    {route === "indo-china" && it.category === "snack" && (
+                                      <div className="mt-1 p-1.5 rounded bg-sun-100 text-[10px] text-amber-950">
+                                        <strong>Caution Snack:</strong> {t.snackCautionPoints.join(" ")}
+                                      </div>
+                                    )}
+                                    {(it.photos || []).length > 0 && (
+                                      <div className="flex gap-1 mt-1">
+                                        {it.photos.map((src, i) => (
+                                          <img key={i} src={src} alt="item" className="w-10 h-10 object-cover rounded border" />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </td>
 
                             <td className="p-2.5 border border-melon-100 min-w-[150px]">
@@ -3187,7 +3197,7 @@
                           <th className="p-2.5 border border-melon-200 text-left">Customer</th>
                           <th className="p-2.5 border border-melon-200 text-left">Jumlah Resi</th>
                           <th className="p-2.5 border border-melon-200 text-left">Total Berat (g)</th>
-                          <th className="p-2.5 border border-melon-200 text-left">Harga Barang</th>
+                          <th className="p-2.5 border border-melon-200 text-left">{t.itemTotalPrice}</th>
                           <th className="p-2.5 border border-melon-200 text-left">Total Tagihan</th>
                           <th className="p-2.5 border border-melon-200 text-left">DP / Dibayar</th>
                           <th className="p-2.5 border border-melon-200 text-left">Sisa Tagihan</th>
@@ -3198,20 +3208,20 @@
                         {aggregatedBillingByCustomer.map((grp) => {
                           const yRate = Number(db.tripConfig["indo-china"]?.yuanRate || 2200);
                           const isCny = route === "indo-china" && grp.currency === "CNY";
-                          const fmtAmt = (idrVal) =>
-                            isCny ? `¥ ${(idrVal / yRate).toFixed(2)}` : formatIdr(idrVal);
+                          const fmtAmt = (val) =>
+                            isCny ? (val / yRate).toFixed(2) : formatAmount(val);
 
                           const receiptText = [
                             `WH By Markyours_here (${routeTitle})`,
                             `Customer: ${grp.customerName} (${grp.customerCode})`,
                             ...grp.subs.map(({ sub, calc }) =>
-                              `- ${sub.resi || "No Resi"} | ${(sub.items || []).map((i) => i.name).join(", ")} | ${calc.totalGrams}g | Harga Barang: ${formatIdr(calc.itemsPriceTotal)} | Total: ${formatIdr(calc.totalIdr)}`
+                              `- ${sub.resi || "No Resi"} | ${(sub.items || []).map((i) => i.name).join(", ")} | ${calc.totalGrams}g | ${t.itemTotalPrice}: ${formatAmount(calc.itemsPriceTotal)} | Total: ${formatAmount(calc.totalIdr)}`
                             ),
                             `Total Berat: ${grp.totalGrams}g`,
-                            `Total Harga Barang: ${formatIdr(grp.itemsPriceTotal)}`,
-                            `Total Tagihan: ${fmtAmt(grp.totalIdr)} (${formatIdr(grp.totalIdr)})`,
-                            `DP / Dibayar: ${formatIdr(grp.paid)}`,
-                            `Sisa Tagihan: ${formatIdr(grp.remaining)}`,
+                            `${t.itemTotalPrice}: ${formatAmount(grp.itemsPriceTotal)}`,
+                            `Total Tagihan: ${fmtAmt(grp.totalIdr)}`,
+                            `DP / Dibayar: ${formatAmount(grp.paid)}`,
+                            `Sisa Tagihan: ${formatAmount(grp.remaining)}`,
                           ].join("\n");
 
                           return (
@@ -3221,13 +3231,12 @@
                               </td>
                               <td className="p-2.5 border border-melon-100">{grp.resiCount}</td>
                               <td className="p-2.5 border border-melon-100">{grp.totalGrams} g</td>
-                              <td className="p-2.5 border border-melon-100">{formatIdr(grp.itemsPriceTotal)}</td>
+                              <td className="p-2.5 border border-melon-100">{formatAmount(grp.itemsPriceTotal)}</td>
                               <td className="p-2.5 border border-melon-100 font-bold text-melon-500">
                                 {fmtAmt(grp.totalIdr)}
-                                {isCny && <div className="text-[10px] text-gray-500">({formatIdr(grp.totalIdr)})</div>}
                               </td>
-                              <td className="p-2.5 border border-melon-100">{formatIdr(grp.paid)}</td>
-                              <td className="p-2.5 border border-melon-100 font-bold text-amber-800">{formatIdr(grp.remaining)}</td>
+                              <td className="p-2.5 border border-melon-100">{formatAmount(grp.paid)}</td>
+                              <td className="p-2.5 border border-melon-100 font-bold text-amber-800">{formatAmount(grp.remaining)}</td>
                               <td className="p-2.5 border border-melon-100">
                                 <button
                                   type="button"
@@ -3250,8 +3259,8 @@
                         <tr className="bg-melon-100 text-gray-800 font-bold">
                           <th className="p-2.5 border border-melon-200 text-left">Customer / Resi</th>
                           <th className="p-2.5 border border-melon-200 text-left">Berat (g)</th>
-                          <th className="p-2.5 border border-melon-200 text-left">Harga Barang</th>
-                          <th className="p-2.5 border border-melon-200 text-left">Tarif/g (IDR)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">{t.itemTotalPrice}</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Tarif/g</th>
                           <th className="p-2.5 border border-melon-200 text-left">Biaya Tambahan</th>
                           {route === "indo-china" && (
                             <th className="p-2.5 border border-melon-200 text-left">Mata Uang</th>
@@ -3295,19 +3304,19 @@
                                   <input
                                     type="number"
                                     min={0}
-                                    value={sub.items?.[0]?.unitPrice ?? 0}
+                                    value={getItemPriceValue(sub.items?.[0])}
                                     onChange={(e) => {
                                       const val = Number(e.target.value || 0);
                                       updateSubmission(sub.id, (prev) => ({
                                         items: (prev.items || []).map((it, idx) =>
-                                          idx === 0 ? { ...it, unitPrice: val } : it
+                                          idx === 0 ? { ...it, totalItemPrice: val } : it
                                         ),
                                       }));
                                     }}
                                     className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
                                   />
                                 ) : (
-                                  formatIdr(calc.itemsPriceTotal)
+                                  formatAmount(calc.itemsPriceTotal)
                                 )}
                               </td>
                               <td className="p-2.5 border border-melon-100">
@@ -3319,7 +3328,7 @@
                                     className="w-20 px-2 py-1 rounded border border-melon-200 bg-white"
                                   />
                                 ) : (
-                                  formatIdr(calc.rate)
+                                  formatAmount(calc.rate)
                                 )}
                               </td>
                               <td className="p-2.5 border border-melon-100">
@@ -3331,7 +3340,7 @@
                                     className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
                                   />
                                 ) : (
-                                  formatIdr(calc.extra)
+                                  formatAmount(calc.extra)
                                 )}
                               </td>
                               {route === "indo-china" && (
@@ -3352,8 +3361,8 @@
                               )}
                               <td className="p-2.5 border border-melon-100 font-bold text-melon-500">
                                 {route === "indo-china" && sub.currency === "CNY"
-                                  ? `¥ ${(calc.totalIdr / yRate).toFixed(2)}`
-                                  : formatIdr(calc.totalIdr)}
+                                  ? (calc.totalIdr / yRate).toFixed(2)
+                                  : formatAmount(calc.totalIdr)}
                               </td>
                               <td className="p-2.5 border border-melon-100">
                                 {session.role === "admin" ? (
@@ -3364,11 +3373,11 @@
                                     className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
                                   />
                                 ) : (
-                                  formatIdr(calc.paid)
+                                  formatAmount(calc.paid)
                                 )}
                               </td>
                               <td className="p-2.5 border border-melon-100">
-                                <div className="font-bold">{formatIdr(calc.remaining)}</div>
+                                <div className="font-bold">{formatAmount(calc.remaining)}</div>
                                 {session.role === "admin" ? (
                                   <select
                                     value={sub.paymentStatus || "Belum Lunas"}
@@ -3478,7 +3487,7 @@
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Tarif Default / gram (IDR)</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tarif Default / gram</label>
                     <input
                       type="number"
                       value={currentTripCfg.defaultRate ?? 180}
@@ -3495,7 +3504,7 @@
                   </div>
                   {route === "indo-china" && (
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Kurs Yuan (1 CNY = ... IDR)</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Kurs Yuan (1 CNY = ...)</label>
                       <input
                         type="number"
                         value={currentTripCfg.yuanRate ?? 2200}
