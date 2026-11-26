@@ -1898,59 +1898,36 @@
       function downloadCombinedPdf() {
         const routeLabel = route === "china-indo" ? "HC China - Indo" : "HC Indo - China";
 
-        const customerSectionsHtml = aggregatedBillingByCustomer
-          .map((grp) => {
-            const rowsHtml = grp.subs
-              .flatMap(({ sub }) => {
-                const subArrivalPhotos = sub.photos?.arrival || [];
-                const resiText = (sub.resi || "").trim() || "-";
+        const allRowsHtml = aggregatedBillingByCustomer
+          .flatMap((grp) =>
+            grp.subs.flatMap(({ sub }) => {
+              const subArrivalPhotos = sub.photos?.arrival || [];
+              const resiText = (sub.resi || "").trim() || "-";
 
-                return (sub.items || []).map((it) => {
-                  const itemPrice = getItemPriceValue(it);
-                  const proofPhotos = [...(it.photos || []), ...subArrivalPhotos];
-                  const proofHtml =
-                    proofPhotos.length > 0
-                      ? proofPhotos
-                          .map(
-                            (src, idx) =>
-                              `<img src="${src}" alt="Bukti beli ${escapeHtml(it.name)} ${idx + 1}" class="proof-img" />`
-                          )
-                          .join("")
-                      : `<span class="muted">-</span>`;
+              return (sub.items || []).map((it) => {
+                const itemPrice = getItemPriceValue(it);
+                const proofPhotos = [...(it.photos || []), ...subArrivalPhotos];
+                const proofHtml =
+                  proofPhotos.length > 0
+                    ? proofPhotos
+                        .map(
+                          (src, idx) =>
+                            `<img src="${src}" alt="Bukti beli ${escapeHtml(it.name)} ${idx + 1}" class="proof-img" />`
+                        )
+                        .join("")
+                    : `<span class="muted">-</span>`;
 
-                  return `
-                    <tr>
-                      <td>${escapeHtml(it.name)} <span class="muted">(x${it.qty})</span></td>
-                      <td><div class="proof-wrap">${proofHtml}</div></td>
-                      <td style="text-align:right;">${formatAmount(itemPrice)}</td>
-                      <td>${escapeHtml(resiText)}</td>
-                    </tr>
-                  `;
-                });
-              })
-              .join("");
-
-            return `
-              <div class="cust-box">
-                <div class="cust-header">
-                  <strong>${escapeHtml(grp.customerName)}</strong> <span class="muted">(${escapeHtml(grp.customerCode)})</span>
-                </div>
-                <table class="items-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 28%;">Nama Barang</th>
-                      <th style="width: 34%;">Bukti Beli Barang</th>
-                      <th style="width: 18%; text-align:right;">Harga Barang</th>
-                      <th style="width: 20%;">Resi Barang</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rowsHtml || `<tr><td colspan="4" class="muted">Tidak ada barang</td></tr>`}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          })
+                return `
+                  <tr>
+                    <td>${escapeHtml(it.name)} <span class="muted">(x${it.qty})</span></td>
+                    <td><div class="proof-wrap">${proofHtml}</div></td>
+                    <td style="text-align:right;">${formatAmount(itemPrice)}</td>
+                    <td>${escapeHtml(resiText)}</td>
+                  </tr>
+                `;
+              });
+            })
+          )
           .join("");
 
         const printHtml = `<!DOCTYPE html>
@@ -1962,11 +1939,10 @@
     body { font-family: Arial, sans-serif; color: #222; padding: 20px; font-size: 12px; }
     h1 { margin: 0 0 4px 0; font-size: 18px; color: #d6285a; }
     .meta { margin-bottom: 14px; color: #555; font-size: 11px; }
-    .cust-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; page-break-inside: avoid; }
-    .cust-header { font-size: 13px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
     .items-table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .items-table th, .items-table td { border: 1px solid #e2e2e2; padding: 6px 8px; text-align: left; vertical-align: middle; }
     .items-table th { background: #fff5f7; color: #333; }
+    .items-table tr { page-break-inside: avoid; }
     .proof-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
     .proof-img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
     .muted { color: #777; }
@@ -1982,8 +1958,20 @@
     </button>
   </div>
   <h1>WH By Markyours_here — Rekap Barang &amp; Bukti Beli (${escapeHtml(routeLabel)})</h1>
-  <div class="meta">Dicetak pada: ${escapeHtml(new Date().toLocaleString("id-ID"))} • Gabungan per Customer (${aggregatedBillingByCustomer.length})</div>
-  ${customerSectionsHtml || "<p>Tidak ada data untuk dicetak.</p>"}
+  <div class="meta">Dicetak pada: ${escapeHtml(new Date().toLocaleString("id-ID"))}</div>
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 28%;">Nama Barang</th>
+        <th style="width: 34%;">Bukti Beli Barang</th>
+        <th style="width: 18%; text-align:right;">Harga Barang</th>
+        <th style="width: 20%;">Resi Barang</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${allRowsHtml || `<tr><td colspan="4" class="muted">Tidak ada data untuk dicetak.</td></tr>`}
+    </tbody>
+  </table>
 </body>
 </html>`;
 
