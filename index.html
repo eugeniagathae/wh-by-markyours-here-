@@ -185,7 +185,6 @@
         addItem: "+ Tambah Barang",
         itemName: "Nama Barang",
         itemQty: "Jumlah",
-        itemTotalPrice: "Total Harga Barang",
         itemCategory: "Kategori Barang",
         catGoods: "Barang",
         catPaperbased: "Paperbased",
@@ -220,7 +219,7 @@
           "tetapi pembawa berusaha semaksimal mungkin agar tidak rusak",
         ],
         snackAckLabel: "Saya sudah membaca dan memahami risiko pengiriman Snack di atas.",
-        uploadItemPhoto: "Upload Foto / Bukti Beli Barang (Maks. 5 foto, otomatis dikompres)",
+        uploadItemPhoto: "Upload Foto Barang (Maks. 5 foto, otomatis dikompres)",
         submitForm: "Simpan Form Barang",
         formSaved: "Data barang berhasil disimpan! 🍉✨",
         lockedNotice: "Form terkunci untuk edit detail karena barang sudah diproses gudang. Kamu tetap bisa Ganti Resi atau Ajukan Retur.",
@@ -296,7 +295,6 @@
         addItem: "+ Add Item",
         itemName: "Item Name",
         itemQty: "Qty",
-        itemTotalPrice: "Total Item Price",
         itemCategory: "Item Category",
         catGoods: "General Goods",
         catPaperbased: "Paperbased",
@@ -331,7 +329,7 @@
           "tetapi pembawa berusaha semaksimal mungkin agar tidak rusak (the carrier will make every possible effort to prevent damage).",
         ],
         snackAckLabel: "I have read and understood the Snack shipping risks above.",
-        uploadItemPhoto: "Upload Item / Purchase Proof Photos (Max 5 photos, auto-compressed)",
+        uploadItemPhoto: "Upload Item Photos (Max 5 photos, auto-compressed)",
         submitForm: "Submit Item Form",
         formSaved: "Item data saved successfully! 🍉✨",
         lockedNotice: "Item details are locked because the warehouse has processed this item. You can still Change Tracking No. or Request Return.",
@@ -407,7 +405,6 @@
         addItem: "+ 添加商品",
         itemName: "商品名称",
         itemQty: "数量",
-        itemTotalPrice: "商品总价",
         itemCategory: "商品类别",
         catGoods: "普通商品",
         catPaperbased: "纸片/周边",
@@ -442,7 +439,7 @@
           "tetapi pembawa berusaha semaksimal mungkin agar tidak rusak（携带者将尽最大努力避免损坏）。",
         ],
         snackAckLabel: "我已阅读并理解上述零食运输风险。",
-        uploadItemPhoto: "上传商品/购买凭证照片（最多5张，自动压缩）",
+        uploadItemPhoto: "上传商品照片（最多5张，自动压缩）",
         submitForm: "提交商品表单",
         formSaved: "商品信息已保存！🍉✨",
         lockedNotice: "仓库已开始处理此商品，详情已锁定。您仍可修改单号或申请退货。",
@@ -608,7 +605,6 @@
                 id: "ITM-1",
                 name: "Photocard Binder A5",
                 qty: 2,
-                totalItemPrice: 0,
                 category: "paperbased",
                 goodsHandling: "",
                 paperOption: "sealed_lineup",
@@ -664,7 +660,6 @@
                 id: "ITM-2",
                 name: "Keripik Singkong & Cup Noodle",
                 qty: 3,
-                totalItemPrice: 0,
                 category: "snack",
                 goodsHandling: "",
                 paperOption: "",
@@ -707,30 +702,13 @@
       });
     }
 
-    function formatAmount(num) {
-      return Math.round(Number(num || 0)).toLocaleString("id-ID");
+    function formatIdr(num) {
+      return "Rp " + Math.round(Number(num || 0)).toLocaleString("id-ID");
     }
 
-    function getItemPriceValue(item) {
-      return Number(item?.totalItemPrice ?? item?.unitPrice ?? 0);
-    }
-
-    function escapeHtml(str) {
-      return String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    // Harga barang TIDAK dihitung ke Total Tagihan (hanya informasi terpisah)
     function computeSubmissionTotal(sub, tripConfig) {
       const cfg = tripConfig[sub.route] || { defaultRate: 180, yuanRate: 2200 };
       const totalGrams = (sub.items || []).reduce((acc, it) => acc + Number(it.weightGram || 0), 0);
-      const itemsPriceTotal = (sub.items || []).reduce(
-        (acc, it) => acc + getItemPriceValue(it),
-        0
-      );
       const rate = Number(sub.ratePerGram ?? cfg.defaultRate ?? 180);
       const extra = Number(sub.extraFee || 0);
       const totalIdr = totalGrams * rate + extra;
@@ -738,7 +716,6 @@
         const yRate = Number(cfg.yuanRate || 2200);
         return {
           totalGrams,
-          itemsPriceTotal,
           rate,
           extra,
           totalIdr,
@@ -750,7 +727,6 @@
       }
       return {
         totalGrams,
-        itemsPriceTotal,
         rate,
         extra,
         totalIdr,
@@ -822,6 +798,7 @@
       const [route, setRoute] = useState(null);
       const [activeTab, setActiveTab] = useState("form");
 
+      // Draft foto per submission & tahap sebelum diklik "Simpan Foto"
       const [pendingStagePhotos, setPendingStagePhotos] = useState({});
       const [savedPhotoNoticeSubId, setSavedPhotoNoticeSubId] = useState("");
 
@@ -839,7 +816,6 @@
             id: "new-1",
             name: "",
             qty: 1,
-            totalItemPrice: 0,
             category: "goods",
             goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
             paperOption: "sealed_no_lineup",
@@ -873,7 +849,6 @@
       const [sortBy, setSortBy] = useState("date");
       const [tripFilter, setTripFilter] = useState("all");
       const [billingGroupByCustomer, setBillingGroupByCustomer] = useState(true);
-      const [expandedCustomerKeys, setExpandedCustomerKeys] = useState({});
       const [copiedKey, setCopiedKey] = useState("");
 
       const [showSyncModal, setShowSyncModal] = useState(false);
@@ -1002,40 +977,6 @@
           .catch((err) => console.error("Delete submission error:", err));
       }
 
-      function pushLocalDataToCloud() {
-        const fs = firestoreRef.current;
-        if (!fs) {
-          setSyncStatusMsg("Firebase belum terhubung.");
-          return;
-        }
-        syncMetaToCloud(db.tripConfig, db.customers);
-        (db.submissions || []).forEach((s) => syncSubmissionToCloud(s));
-        (db.deletedLogs || []).forEach((l) => syncActivityLogToCloud(l));
-        setSyncStatusMsg("Data lokal berhasil dikirim ke Firebase!");
-      }
-
-      function saveFirebaseConfig() {
-        setSyncStatusMsg("");
-        if (!fbConfigText.trim()) {
-          try {
-            window.localStorage.removeItem(FB_CONFIG_KEY);
-          } catch (e) {}
-          setSyncStatusMsg("Override Firebase dihapus. Muat ulang halaman untuk menerapkan.");
-          return;
-        }
-        try {
-          const parsed = JSON.parse(fbConfigText.trim());
-          if (!parsed || !parsed.apiKey || !parsed.projectId) {
-            setSyncStatusMsg("JSON tidak valid: wajib menyertakan apiKey dan projectId.");
-            return;
-          }
-          safeSetStorage(FB_CONFIG_KEY, JSON.stringify(parsed));
-          setSyncStatusMsg("Konfigurasi Firebase tersimpan! Muat ulang halaman untuk menyambungkan.");
-        } catch (err) {
-          setSyncStatusMsg("Format JSON tidak valid.");
-        }
-      }
-
       useEffect(() => {
         let current = 0;
         const timer = setInterval(() => {
@@ -1099,11 +1040,6 @@
         const nextGrams = (nextSub.items || []).reduce((a, b) => a + Number(b.weightGram || 0), 0);
         if (prevGrams !== nextGrams) {
           changes.push(`Berat: ${prevGrams}g → ${nextGrams}g`);
-        }
-        const prevPrice = (prevSub.items || []).reduce((a, b) => a + getItemPriceValue(b), 0);
-        const nextPrice = (nextSub.items || []).reduce((a, b) => a + getItemPriceValue(b), 0);
-        if (prevPrice !== nextPrice) {
-          changes.push(`Harga barang: ${formatAmount(prevPrice)} → ${formatAmount(nextPrice)}`);
         }
         if (Number(prevSub.ratePerGram || 0) !== Number(nextSub.ratePerGram || 0)) {
           changes.push(`Tarif/g: ${nextSub.ratePerGram}`);
@@ -1251,7 +1187,6 @@
               id: "itm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
               name: "",
               qty: 1,
-              totalItemPrice: 0,
               category: route === "indo-china" ? "snack" : "goods",
               goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
               paperOption: "sealed_no_lineup",
@@ -1326,7 +1261,6 @@
           id: it.id || `ITM-${Date.now()}-${i}`,
           name: it.name.trim() || `Barang #${i + 1}`,
           qty: Math.max(1, Number(it.qty || 1)),
-          totalItemPrice: Math.max(0, getItemPriceValue(it)),
           weightGram: Number(it.weightGram || 0),
         }));
 
@@ -1399,7 +1333,6 @@
               id: "itm-" + Date.now(),
               name: "",
               qty: 1,
-              totalItemPrice: 0,
               category: route === "indo-china" ? "snack" : "goods",
               goodsHandling: "Plastik dibawa & boleh dibuka untuk lihat detail barang",
               paperOption: "sealed_no_lineup",
@@ -1589,11 +1522,89 @@
         setTimeout(() => setCopiedKey(""), 1800);
       }
 
-      function toggleCustomerExpand(key) {
-        setExpandedCustomerKeys((prev) => ({
-          ...prev,
-          [key]: !prev[key],
-        }));
+      function exportCsv() {
+        const headers = [
+          "ID", "Jalur", "Tanggal", "Kode Cust", "Nama", "No HP", "Pengupload",
+          "Resi", "Status", "Kloter", "Kota", "Sortir", "Resi Indo",
+          "Berat (g)", "Tarif/g", "Biaya Tambahan", "Total (IDR)", "DP", "Sisa", "Status Bayar", "Catatan", "Log Terakhir"
+        ];
+        const rows = visibleSubmissions.map((s) => {
+          const calc = computeSubmissionTotal(s, db.tripConfig);
+          return [
+            s.id, s.route, (s.createdAt || "").slice(0, 10), s.customerCode,
+            s.customerName, s.phone, s.uploaderName, s.resi, s.status,
+            isNextTrip(s, db.tripConfig) ? "Ikut Next Trip" : "Trip Aktif",
+            s.city, s.sortedChecked ? "Ya" : "Belum", s.indoResi,
+            calc.totalGrams, calc.rate, calc.extra, Math.round(calc.totalIdr),
+            calc.paid, Math.round(calc.remaining), s.paymentStatus, s.shortageNote || "", s.lastAudit || ""
+          ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",");
+        });
+        const csv = [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wh-markyours-here-${route || "all"}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function exportJsonBackup() {
+        const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wh-markyours-here-backup.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function handleImportJson(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (parsed && Array.isArray(parsed.submissions)) {
+              setDb(parsed);
+              syncMetaToCloud(parsed.tripConfig || db.tripConfig, parsed.customers || db.customers);
+              parsed.submissions.forEach((s) => syncSubmissionToCloud(s));
+              setSyncStatusMsg("Backup JSON berhasil dimuat & disinkronkan ke Firebase!");
+            } else {
+              setSyncStatusMsg("Format JSON tidak valid.");
+            }
+          } catch {
+            setSyncStatusMsg("Gagal membaca file JSON.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function saveFirebaseConfig() {
+        try {
+          const parsed = JSON.parse(fbConfigText);
+          if (!parsed.apiKey || !parsed.projectId) {
+            setSyncStatusMsg("JSON harus memiliki apiKey dan projectId.");
+            return;
+          }
+          safeSetStorage(FB_CONFIG_KEY, JSON.stringify(parsed));
+          setSyncStatusMsg("Konfigurasi Firebase tersimpan! Halaman akan dimuat ulang untuk menghubungkan...");
+          setTimeout(() => window.location.reload(), 900);
+        } catch {
+          setSyncStatusMsg("Format JSON tidak valid. Pastikan tanda kutip sesuai format JSON.");
+        }
+      }
+
+      function pushLocalDataToCloud() {
+        if (!firestoreRef.current) {
+          setSyncStatusMsg("Firebase belum terhubung. Cek firebaseConfig & Firestore Rules dulu.");
+          return;
+        }
+        syncMetaToCloud(db.tripConfig, db.customers);
+        db.submissions.forEach((s) => syncSubmissionToCloud(s));
+        (db.deletedLogs || []).forEach((l) => syncActivityLogToCloud(l));
+        setSyncStatusMsg(`Berhasil mengirim ${db.submissions.length} data lokal ke Firebase Firestore!`);
       }
 
       const publicMatches = useMemo(() => {
@@ -1723,7 +1734,7 @@
         const map = new Map();
         for (const sub of visibleSubmissions) {
           const calc = computeSubmissionTotal(sub, db.tripConfig);
-          const key = (sub.customerCode || sub.customerName || sub.id).trim();
+          const key = sub.customerCode || sub.customerName;
           if (!map.has(key)) {
             map.set(key, {
               key,
@@ -1731,7 +1742,6 @@
               customerCode: sub.customerCode,
               currency: sub.currency || "IDR",
               totalGrams: 0,
-              itemsPriceTotal: 0,
               totalIdr: 0,
               paid: 0,
               remaining: 0,
@@ -1741,7 +1751,6 @@
           }
           const entry = map.get(key);
           entry.totalGrams += calc.totalGrams;
-          entry.itemsPriceTotal += calc.itemsPriceTotal;
           entry.totalIdr += calc.totalIdr;
           entry.paid += calc.paid;
           entry.remaining += calc.remaining;
@@ -1750,235 +1759,6 @@
         }
         return Array.from(map.values());
       }, [visibleSubmissions, db.tripConfig]);
-
-      function downloadCombinedExcel() {
-        const routeLabel = route === "china-indo" ? "HC China - Indo" : "HC Indo - China";
-        const yRate = Number(db.tripConfig["indo-china"]?.yuanRate || 2200);
-
-        const summaryRowsHtml = aggregatedBillingByCustomer
-          .map((grp) => {
-            const isCny = route === "indo-china" && grp.currency === "CNY";
-            const totalTagihanFmt = isCny ? (grp.totalIdr / yRate).toFixed(2) : Math.round(grp.totalIdr);
-            const itemNames = grp.subs
-              .flatMap(({ sub }) => (sub.items || []).map((it) => `${it.name} (x${it.qty})`))
-              .join(", ");
-            const resiList = grp.subs
-              .map(({ sub }) => sub.resi || "(Belum ada resi)")
-              .join(", ");
-
-            return `
-              <tr>
-                <td>${escapeHtml(grp.customerName)}</td>
-                <td>${escapeHtml(grp.customerCode)}</td>
-                <td>${grp.resiCount}</td>
-                <td>${escapeHtml(resiList)}</td>
-                <td>${escapeHtml(itemNames)}</td>
-                <td>${grp.totalGrams}</td>
-                <td>${Math.round(grp.itemsPriceTotal)}</td>
-                <td>${totalTagihanFmt}</td>
-                <td>${Math.round(grp.paid)}</td>
-                <td>${Math.round(grp.remaining)}</td>
-              </tr>
-            `;
-          })
-          .join("");
-
-        const detailRowsHtml = visibleSubmissions
-          .map((sub) => {
-            const calc = computeSubmissionTotal(sub, db.tripConfig);
-            const isCny = route === "indo-china" && sub.currency === "CNY";
-            const totalTagihanFmt = isCny ? (calc.totalIdr / yRate).toFixed(2) : Math.round(calc.totalIdr);
-            const itemNames = (sub.items || []).map((it) => `${it.name} (x${it.qty})`).join(", ");
-
-            return `
-              <tr>
-                <td>${escapeHtml(sub.customerName)}</td>
-                <td>${escapeHtml(sub.customerCode)}</td>
-                <td>${escapeHtml(sub.id)}</td>
-                <td>${escapeHtml(sub.resi || "-")}</td>
-                <td>${escapeHtml(sub.status)}</td>
-                <td>${escapeHtml(itemNames)}</td>
-                <td>${calc.totalGrams}</td>
-                <td>${Math.round(calc.itemsPriceTotal)}</td>
-                <td>${calc.rate}</td>
-                <td>${Math.round(calc.extra)}</td>
-                <td>${totalTagihanFmt}</td>
-                <td>${Math.round(calc.paid)}</td>
-                <td>${Math.round(calc.remaining)}</td>
-                <td>${escapeHtml(sub.paymentStatus || "Belum Lunas")}</td>
-              </tr>
-            `;
-          })
-          .join("");
-
-        const xlsContent = `
-          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-          <head><meta charset="UTF-8" /></head>
-          <body>
-            <h3>WH By Markyours_here — Rekap Gabungan per Customer (${escapeHtml(routeLabel)})</h3>
-            <table border="1">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Kode Customer</th>
-                  <th>Jumlah Resi</th>
-                  <th>Daftar Resi</th>
-                  <th>Daftar Barang</th>
-                  <th>Total Berat (g)</th>
-                  <th>Total Harga Barang (Info - Tidak Masuk Tagihan)</th>
-                  <th>Total Tagihan</th>
-                  <th>DP / Dibayar</th>
-                  <th>Sisa Tagihan</th>
-                </tr>
-              </thead>
-              <tbody>${summaryRowsHtml}</tbody>
-            </table>
-            <br/>
-            <h3>Rincian Kiriman Gabungan</h3>
-            <table border="1">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Kode Customer</th>
-                  <th>ID Kiriman</th>
-                  <th>Resi</th>
-                  <th>Status</th>
-                  <th>Barang</th>
-                  <th>Berat (g)</th>
-                  <th>Total Harga Barang (Info)</th>
-                  <th>Tarif/g</th>
-                  <th>Biaya Tambahan</th>
-                  <th>Total Tagihan</th>
-                  <th>DP / Dibayar</th>
-                  <th>Sisa Tagihan</th>
-                  <th>Status Bayar</th>
-                </tr>
-              </thead>
-              <tbody>${detailRowsHtml}</tbody>
-            </table>
-          </body>
-          </html>
-        `;
-
-        const blob = new Blob(["\ufeff" + xlsContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `gabungan-tagihan-${route}-${new Date().toISOString().slice(0, 10)}.xls`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-
-      // PDF gabungan khusus: Nama Barang, Bukti Beli Barang, Harga Barang, dan Resi Barang saja
-      function downloadCombinedPdf() {
-        const routeLabel = route === "china-indo" ? "HC China - Indo" : "HC Indo - China";
-
-        const customerSectionsHtml = aggregatedBillingByCustomer
-          .map((grp) => {
-            const rowsHtml = grp.subs
-              .flatMap(({ sub }) => {
-                const subArrivalPhotos = sub.photos?.arrival || [];
-                const resiText = (sub.resi || "").trim() || "-";
-
-                return (sub.items || []).map((it) => {
-                  const itemPrice = getItemPriceValue(it);
-                  const proofPhotos = [...(it.photos || []), ...subArrivalPhotos];
-                  const proofHtml =
-                    proofPhotos.length > 0
-                      ? proofPhotos
-                          .map(
-                            (src, idx) =>
-                              `<img src="${src}" alt="Bukti beli ${escapeHtml(it.name)} ${idx + 1}" class="proof-img" />`
-                          )
-                          .join("")
-                      : `<span class="muted">-</span>`;
-
-                  return `
-                    <tr>
-                      <td>${escapeHtml(it.name)} <span class="muted">(x${it.qty})</span></td>
-                      <td><div class="proof-wrap">${proofHtml}</div></td>
-                      <td style="text-align:right;">${formatAmount(itemPrice)}</td>
-                      <td>${escapeHtml(resiText)}</td>
-                    </tr>
-                  `;
-                });
-              })
-              .join("");
-
-            return `
-              <div class="cust-box">
-                <div class="cust-header">
-                  <strong>${escapeHtml(grp.customerName)}</strong> <span class="muted">(${escapeHtml(grp.customerCode)})</span>
-                </div>
-                <table class="items-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 28%;">Nama Barang</th>
-                      <th style="width: 34%;">Bukti Beli Barang</th>
-                      <th style="width: 18%; text-align:right;">Harga Barang</th>
-                      <th style="width: 20%;">Resi Barang</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rowsHtml || `<tr><td colspan="4" class="muted">Tidak ada barang</td></tr>`}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          })
-          .join("");
-
-        const printHtml = `
-          <!DOCTYPE html>
-          <html lang="id">
-          <head>
-            <meta charset="UTF-8" />
-            <title>PDF Gabungan Barang & Bukti Beli - ${escapeHtml(routeLabel)}</title>
-            <style>
-              body { font-family: Arial, sans-serif; color: #222; padding: 20px; font-size: 12px; }
-              h1 { margin: 0 0 4px 0; font-size: 18px; color: #d6285a; }
-              .meta { margin-bottom: 14px; color: #555; font-size: 11px; }
-              .cust-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; page-break-inside: avoid; }
-              .cust-header { font-size: 13px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
-              .items-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-              .items-table th, .items-table td { border: 1px solid #e2e2e2; padding: 6px 8px; text-align: left; vertical-align: middle; }
-              .items-table th { background: #fff5f7; color: #333; }
-              .proof-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
-              .proof-img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
-              .muted { color: #777; }
-              @media print {
-                .no-print { display: none; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="no-print" style="margin-bottom: 12px;">
-              <button onclick="window.print()" style="padding: 8px 14px; background: #f14170; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                Cetak / Simpan sebagai PDF
-              </button>
-            </div>
-            <h1>WH By Markyours_here — Rekap Barang &amp; Bukti Beli (${escapeHtml(routeLabel)})</h1>
-            <div class="meta">Dicetak pada: ${escapeHtml(new Date().toLocaleString("id-ID"))} • Gabungan per Customer (${aggregatedBillingByCustomer.length})</div>
-            ${customerSectionsHtml || "<p>Tidak ada data untuk dicetak.</p>"}
-          </body>
-          </html>
-        `;
-
-        const win = window.open("", "_blank");
-        if (win) {
-          win.document.open();
-          win.document.write(printHtml);
-          win.document.close();
-          setTimeout(() => {
-            try {
-              win.focus();
-              win.print();
-            } catch (e) {}
-          }, 300);
-        } else {
-          alert("Pop-up diblokir browser. Izinkan pop-up untuk membuka tampilan PDF gabungan.");
-        }
-      }
 
       if (!loaded) {
         return (
@@ -2081,52 +1861,42 @@
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                           <div className="p-3 rounded-xl bg-white border border-melon-100">
                             <div className="text-gray-500">Total Berat</div>
                             <div className="font-bold text-sm text-gray-800">{calc.totalGrams} g</div>
                           </div>
                           <div className="p-3 rounded-xl bg-white border border-melon-100">
-                            <div className="text-gray-500">{t.itemTotalPrice} (Info)</div>
-                            <div className="font-bold text-sm text-gray-800">{formatAmount(calc.itemsPriceTotal)}</div>
-                          </div>
-                          <div className="p-3 rounded-xl bg-white border border-melon-100">
                             <div className="text-gray-500">Perkiraan Tagihan</div>
-                            <div className="font-bold text-sm text-melon-500">{formatAmount(calc.totalIdr)}</div>
+                            <div className="font-bold text-sm text-melon-500">{formatIdr(calc.totalIdr)}</div>
                           </div>
                           <div className="p-3 rounded-xl bg-white border border-melon-100">
                             <div className="text-gray-500">Sisa / Status Bayar</div>
-                            <div className="font-bold text-sm text-gray-800">{formatAmount(calc.remaining)} ({sub.paymentStatus})</div>
+                            <div className="font-bold text-sm text-gray-800">{formatIdr(calc.remaining)} ({sub.paymentStatus})</div>
                           </div>
                         </div>
 
                         <div className="space-y-1.5">
                           <div className="text-xs font-bold text-gray-700">Detail Barang:</div>
-                          {(sub.items || []).map((it) => {
-                            const itemPrice = getItemPriceValue(it);
-                            return (
-                              <div key={it.id} className="p-3 rounded-xl bg-white border border-melon-100 text-xs space-y-1">
-                                <div className="font-bold text-gray-800">
-                                  {it.name} <span className="text-melon-500">x{it.qty}</span>
-                                  {itemPrice > 0 && ` • ${t.itemTotalPrice} (Info): ${formatAmount(itemPrice)}`}
-                                  {" • Berat: "}
-                                  {it.weightGram || 0} g
-                                </div>
-                                <div className="text-gray-600">Kategori: {it.category}</div>
-                                {it.goodsHandling && <div className="text-gray-600">Kemasan: {it.goodsHandling}</div>}
-                                {it.paperOption && <div className="text-gray-600">Paperbased: {it.paperOption}</div>}
-                                {it.liquidMl && <div className="text-gray-600">Volume: {it.liquidMl} ml</div>}
-                                {it.elecMah && <div className="text-gray-600">Baterai: {it.elecType} ({it.elecMah})</div>}
-                                {(it.photos || []).length > 0 && (
-                                  <div className="flex flex-wrap gap-2 pt-1">
-                                    {it.photos.map((src, i) => (
-                                      <img key={i} src={src} alt="barang" className="w-20 h-20 object-cover rounded-xl border border-melon-200" />
-                                    ))}
-                                  </div>
-                                )}
+                          {(sub.items || []).map((it) => (
+                            <div key={it.id} className="p-3 rounded-xl bg-white border border-melon-100 text-xs space-y-1">
+                              <div className="font-bold text-gray-800">
+                                {it.name} <span className="text-melon-500">x{it.qty}</span> • Berat: {it.weightGram || 0} g
                               </div>
-                            );
-                          })}
+                              <div className="text-gray-600">Kategori: {it.category}</div>
+                              {it.goodsHandling && <div className="text-gray-600">Kemasan: {it.goodsHandling}</div>}
+                              {it.paperOption && <div className="text-gray-600">Paperbased: {it.paperOption}</div>}
+                              {it.liquidMl && <div className="text-gray-600">Volume: {it.liquidMl} ml</div>}
+                              {it.elecMah && <div className="text-gray-600">Baterai: {it.elecType} ({it.elecMah})</div>}
+                              {(it.photos || []).length > 0 && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  {it.photos.map((src, i) => (
+                                    <img key={i} src={src} alt="barang" className="w-20 h-20 object-cover rounded-xl border border-melon-200" />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
 
                         {visiblePhotos.length > 0 && (
@@ -2633,7 +2403,7 @@
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-bold text-gray-700 mb-1">{t.itemName}</label>
                           <input
@@ -2651,17 +2421,6 @@
                             min={1}
                             value={item.qty}
                             onChange={(e) => updateItemRow(idx, { qty: e.target.value })}
-                            className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">{t.itemTotalPrice}</label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={item.totalItemPrice ?? 0}
-                            onChange={(e) => updateItemRow(idx, { totalItemPrice: e.target.value })}
-                            placeholder="0"
                             className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
                           />
                         </div>
@@ -2863,22 +2622,13 @@
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="font-display text-xl font-bold text-melon-500">{t.navRekap}</h2>
                   {session.role === "admin" && (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={downloadCombinedExcel}
-                        className="px-3.5 py-2 rounded-xl bg-rind-100 hover:bg-rind-200 text-rind-500 text-xs font-bold cursor-pointer"
-                      >
-                        📊 Excel Gabungan
-                      </button>
-                      <button
-                        type="button"
-                        onClick={downloadCombinedPdf}
-                        className="px-3.5 py-2 rounded-xl bg-melon-100 hover:bg-melon-200 text-melon-500 text-xs font-bold cursor-pointer"
-                      >
-                        📄 PDF Gabungan
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={exportCsv}
+                      className="px-3.5 py-2 rounded-xl bg-rind-100 hover:bg-rind-200 text-rind-500 text-xs font-bold cursor-pointer"
+                    >
+                      ⬇️ Export CSV
+                    </button>
                   )}
                 </div>
 
@@ -3027,46 +2777,38 @@
                             </td>
 
                             <td className="p-2.5 border border-melon-100 min-w-[220px]">
-                              {(sub.items || []).map((it) => {
-                                const itemPrice = getItemPriceValue(it);
-                                return (
-                                  <div key={it.id} className="mb-2 last:mb-0 pb-1.5 border-b last:border-b-0 border-melon-100">
-                                    <div className="font-bold text-gray-800">{it.name} <span className="text-melon-500">x{it.qty}</span></div>
-                                    {itemPrice > 0 && (
-                                      <div className="text-[11px] text-gray-700">
-                                        {t.itemTotalPrice} (Info): {formatAmount(itemPrice)}
-                                      </div>
-                                    )}
-                                    <div className="text-[11px] text-gray-600">Kategori: {it.category}</div>
-                                    {it.category === "goods" && it.goodsHandling && (
-                                      <div className="text-[11px] text-gray-600">Kemasan: {it.goodsHandling}</div>
-                                    )}
-                                    {it.category === "paperbased" && it.paperOption && (
-                                      <div className="text-[11px] text-gray-600">Paperbased: {it.paperOption}</div>
-                                    )}
-                                    {it.category === "liquid" && it.liquidMl && (
-                                      <div className="text-[11px] text-gray-600">Volume: {it.liquidMl} ml</div>
-                                    )}
-                                    {it.category === "electronic" && (
-                                      <div className="text-[11px] text-gray-600">
-                                        {it.elecType} {it.elecMah ? `(${it.elecMah})` : ""}
-                                      </div>
-                                    )}
-                                    {route === "indo-china" && it.category === "snack" && (
-                                      <div className="mt-1 p-1.5 rounded bg-sun-100 text-[10px] text-amber-950">
-                                        <strong>Caution Snack:</strong> {t.snackCautionPoints.join(" ")}
-                                      </div>
-                                    )}
-                                    {(it.photos || []).length > 0 && (
-                                      <div className="flex gap-1 mt-1">
-                                        {it.photos.map((src, i) => (
-                                          <img key={i} src={src} alt="item" className="w-10 h-10 object-cover rounded border" />
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                              {(sub.items || []).map((it) => (
+                                <div key={it.id} className="mb-2 last:mb-0 pb-1.5 border-b last:border-b-0 border-melon-100">
+                                  <div className="font-bold text-gray-800">{it.name} <span className="text-melon-500">x{it.qty}</span></div>
+                                  <div className="text-[11px] text-gray-600">Kategori: {it.category}</div>
+                                  {it.category === "goods" && it.goodsHandling && (
+                                    <div className="text-[11px] text-gray-600">Kemasan: {it.goodsHandling}</div>
+                                  )}
+                                  {it.category === "paperbased" && it.paperOption && (
+                                    <div className="text-[11px] text-gray-600">Paperbased: {it.paperOption}</div>
+                                  )}
+                                  {it.category === "liquid" && it.liquidMl && (
+                                    <div className="text-[11px] text-gray-600">Volume: {it.liquidMl} ml</div>
+                                  )}
+                                  {it.category === "electronic" && (
+                                    <div className="text-[11px] text-gray-600">
+                                      {it.elecType} {it.elecMah ? `(${it.elecMah})` : ""}
+                                    </div>
+                                  )}
+                                  {route === "indo-china" && it.category === "snack" && (
+                                    <div className="mt-1 p-1.5 rounded bg-sun-100 text-[10px] text-amber-950">
+                                      <strong>Caution Snack:</strong> {t.snackCautionPoints.join(" ")}
+                                    </div>
+                                  )}
+                                  {(it.photos || []).length > 0 && (
+                                    <div className="flex gap-1 mt-1">
+                                      {it.photos.map((src, i) => (
+                                        <img key={i} src={src} alt="item" className="w-10 h-10 object-cover rounded border" />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </td>
 
                             <td className="p-2.5 border border-melon-100 min-w-[150px]">
@@ -3320,4 +3062,615 @@
                               </button>
                               <button
                                 type="button"
-                                onClick
+                                onClick={() => {
+                                  setReturModal(sub.id);
+                                  setReturType(sub.returInfo?.type || "Retur CO Ulang");
+                                  setReturNewResi(sub.returInfo?.newResi || "");
+                                  setReturReason(sub.returInfo?.reason || "");
+                                }}
+                                className="w-full py-1 px-2 rounded-lg bg-sun-100 hover:bg-sun-200 text-amber-900 font-bold text-[11px] cursor-pointer"
+                              >
+                                {t.requestRetur}
+                              </button>
+
+                              {session.role === "admin" && isRetur && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSubmission(sub)}
+                                  className="w-full py-1 px-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] cursor-pointer"
+                                >
+                                  🗑️ {t.deleteReturBtn}
+                                </button>
+                              )}
+
+                              {session.role === "customer" && isRetur && (
+                                custCanDelete ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSubmission(sub)}
+                                    className="w-full py-1 px-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] cursor-pointer"
+                                  >
+                                    🗑️ {t.deleteReturBtn}
+                                  </button>
+                                ) : (
+                                  <div className="text-[10px] text-red-700 bg-red-50 p-1.5 rounded border border-red-200">
+                                    {t.deleteBlockedNotice}
+                                  </div>
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "billing" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-4 sm:p-6 shadow-lg space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-display text-xl font-bold text-melon-500">{t.navBilling}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBillingGroupByCustomer(true)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                        billingGroupByCustomer ? "bg-melon-400 text-white" : "bg-melon-50 text-gray-700 border border-melon-200"
+                      }`}
+                    >
+                      Gabung per Customer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBillingGroupByCustomer(false)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                        !billingGroupByCustomer ? "bg-melon-400 text-white" : "bg-melon-50 text-gray-700 border border-melon-200"
+                      }`}
+                    >
+                      Per Barang
+                    </button>
+                  </div>
+                </div>
+
+                {billingGroupByCustomer ? (
+                  <div className="overflow-x-auto sheet-scroll border border-melon-200 rounded-2xl">
+                    <table className="min-w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-rind-100 text-gray-800 font-bold">
+                          <th className="p-2.5 border border-melon-200 text-left">Customer</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Jumlah Resi</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Total Berat (g)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Total Tagihan</th>
+                          <th className="p-2.5 border border-melon-200 text-left">DP / Dibayar</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Sisa Tagihan</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Salin Struk</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aggregatedBillingByCustomer.map((grp) => {
+                          const yRate = Number(db.tripConfig["indo-china"]?.yuanRate || 2200);
+                          const isCny = route === "indo-china" && grp.currency === "CNY";
+                          const fmtAmt = (idrVal) =>
+                            isCny ? `¥ ${(idrVal / yRate).toFixed(2)}` : formatIdr(idrVal);
+
+                          const receiptText = [
+                            `WH By Markyours_here (${routeTitle})`,
+                            `Customer: ${grp.customerName} (${grp.customerCode})`,
+                            ...grp.subs.map(({ sub, calc }) =>
+                              `- ${sub.resi || "No Resi"} | ${(sub.items || []).map((i) => i.name).join(", ")} | ${calc.totalGrams}g | ${formatIdr(calc.totalIdr)}`
+                            ),
+                            `Total Berat: ${grp.totalGrams}g`,
+                            `Total Tagihan: ${fmtAmt(grp.totalIdr)} (${formatIdr(grp.totalIdr)})`,
+                            `DP / Dibayar: ${formatIdr(grp.paid)}`,
+                            `Sisa Tagihan: ${formatIdr(grp.remaining)}`,
+                          ].join("\n");
+
+                          return (
+                            <tr key={grp.key} className="odd:bg-white even:bg-melon-50/30">
+                              <td className="p-2.5 border border-melon-100 font-bold">
+                                {grp.customerName} <span className="text-[11px] text-gray-500">({grp.customerCode})</span>
+                              </td>
+                              <td className="p-2.5 border border-melon-100">{grp.resiCount}</td>
+                              <td className="p-2.5 border border-melon-100">{grp.totalGrams} g</td>
+                              <td className="p-2.5 border border-melon-100 font-bold text-melon-500">
+                                {fmtAmt(grp.totalIdr)}
+                                {isCny && <div className="text-[10px] text-gray-500">({formatIdr(grp.totalIdr)})</div>}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">{formatIdr(grp.paid)}</td>
+                              <td className="p-2.5 border border-melon-100 font-bold text-amber-800">{formatIdr(grp.remaining)}</td>
+                              <td className="p-2.5 border border-melon-100">
+                                <button
+                                  type="button"
+                                  onClick={() => copyReceiptText(grp.key, receiptText)}
+                                  className="px-3 py-1 rounded-lg bg-melon-100 hover:bg-melon-200 text-melon-500 font-bold cursor-pointer"
+                                >
+                                  {copiedKey === grp.key ? t.copied : t.copyReceipt}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto sheet-scroll border border-melon-200 rounded-2xl">
+                    <table className="min-w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-melon-100 text-gray-800 font-bold">
+                          <th className="p-2.5 border border-melon-200 text-left">Customer / Resi</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Berat (g)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Tarif/g (IDR)</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Biaya Tambahan</th>
+                          {route === "indo-china" && (
+                            <th className="p-2.5 border border-melon-200 text-left">Mata Uang</th>
+                          )}
+                          <th className="p-2.5 border border-melon-200 text-left">Total Tagihan</th>
+                          <th className="p-2.5 border border-melon-200 text-left">DP / Dibayar</th>
+                          <th className="p-2.5 border border-melon-200 text-left">Sisa &amp; Status Bayar</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleSubmissions.map((sub) => {
+                          const calc = computeSubmissionTotal(sub, db.tripConfig);
+                          const yRate = Number(db.tripConfig["indo-china"]?.yuanRate || 2200);
+                          return (
+                            <tr key={sub.id} className="odd:bg-white even:bg-melon-50/30">
+                              <td className="p-2.5 border border-melon-100">
+                                <div className="font-bold">{sub.customerName}</div>
+                                <div className="text-[11px] text-gray-500">{sub.resi || "(No Resi)"}</div>
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.items?.[0]?.weightGram ?? 0}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value || 0);
+                                      updateSubmission(sub.id, (prev) => ({
+                                        items: (prev.items || []).map((it, idx) =>
+                                          idx === 0 ? { ...it, weightGram: val } : it
+                                        ),
+                                      }));
+                                    }}
+                                    className="w-20 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  `${calc.totalGrams} g`
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.ratePerGram ?? calc.rate}
+                                    onChange={(e) => updateSubmission(sub.id, { ratePerGram: Number(e.target.value || 0) })}
+                                    className="w-20 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  formatIdr(calc.rate)
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.extraFee ?? 0}
+                                    onChange={(e) => updateSubmission(sub.id, { extraFee: Number(e.target.value || 0) })}
+                                    className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  formatIdr(calc.extra)
+                                )}
+                              </td>
+                              {route === "indo-china" && (
+                                <td className="p-2.5 border border-melon-100">
+                                  {session.role === "admin" ? (
+                                    <select
+                                      value={sub.currency || "IDR"}
+                                      onChange={(e) => updateSubmission(sub.id, { currency: e.target.value })}
+                                      className="px-2 py-1 rounded border border-melon-200 bg-white"
+                                    >
+                                      <option value="IDR">IDR</option>
+                                      <option value="CNY">CNY (Yuan)</option>
+                                    </select>
+                                  ) : (
+                                    sub.currency || "IDR"
+                                  )}
+                                </td>
+                              )}
+                              <td className="p-2.5 border border-melon-100 font-bold text-melon-500">
+                                {route === "indo-china" && sub.currency === "CNY"
+                                  ? `¥ ${(calc.totalIdr / yRate).toFixed(2)}`
+                                  : formatIdr(calc.totalIdr)}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                {session.role === "admin" ? (
+                                  <input
+                                    type="number"
+                                    value={sub.paidAmount ?? 0}
+                                    onChange={(e) => updateSubmission(sub.id, { paidAmount: Number(e.target.value || 0) })}
+                                    className="w-24 px-2 py-1 rounded border border-melon-200 bg-white"
+                                  />
+                                ) : (
+                                  formatIdr(calc.paid)
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-melon-100">
+                                <div className="font-bold">{formatIdr(calc.remaining)}</div>
+                                {session.role === "admin" ? (
+                                  <select
+                                    value={sub.paymentStatus || "Belum Lunas"}
+                                    onChange={(e) => updateSubmission(sub.id, { paymentStatus: e.target.value })}
+                                    className="mt-1 px-2 py-0.5 rounded border border-melon-200 bg-white text-[11px]"
+                                  >
+                                    <option value="Belum Lunas">Belum Lunas</option>
+                                    <option value="DP">DP</option>
+                                    <option value="Lunas">Lunas</option>
+                                  </select>
+                                ) : (
+                                  <span className="text-[11px] text-gray-600">{sub.paymentStatus}</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "logs" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-melon-500">{t.activityTitle} ({routeTitle})</h2>
+                    <p className="text-xs text-gray-600">
+                      Menampilkan siapa yang memasukkan, mengubah, meretur, atau menghapus data beserta waktunya.
+                    </p>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full bg-melon-100 text-melon-500 font-bold">
+                    {allActivityLogs.length} Catatan
+                  </span>
+                </div>
+
+                {allActivityLogs.length === 0 ? (
+                  <p className="text-xs text-gray-500 bg-melon-50 p-4 rounded-2xl">Belum ada log aktivitas.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {allActivityLogs.map((lg) => (
+                      <div
+                        key={lg.id}
+                        className="p-3.5 rounded-2xl bg-melon-50/50 border border-melon-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-full bg-melon-400 text-white font-bold text-[10px]">
+                              {lg.action}
+                            </span>
+                            <strong className="text-gray-800">{lg.actor}</strong>
+                            <span className="text-[11px] text-gray-500">({lg.role})</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="font-semibold text-gray-700">
+                              {lg.customerName} ({lg.targetId})
+                            </span>
+                            {lg.resi && lg.resi !== "-" && (
+                              <span className="text-melon-500 font-semibold">• Resi: {lg.resi}</span>
+                            )}
+                          </div>
+                          <div className="text-gray-700">{lg.detail}</div>
+                        </div>
+                        <div className="text-[11px] text-gray-500 whitespace-nowrap">{lg.timeLabel}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "trip" && session.role === "admin" && (
+              <div className="bg-white/95 border-2 border-melon-200 rounded-3xl p-5 sm:p-7 shadow-lg space-y-4 max-w-xl">
+                <h2 className="font-display text-xl font-bold text-melon-500">{t.navTrip} ({routeTitle})</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Last Terima</label>
+                    <input
+                      type="date"
+                      value={currentTripCfg.lastReceive || ""}
+                      onChange={(e) => {
+                        const nextTrip = {
+                          ...db.tripConfig,
+                          [route]: { ...db.tripConfig[route], lastReceive: e.target.value },
+                        };
+                        setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                        syncMetaToCloud(nextTrip, db.customers);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Berangkat</label>
+                    <input
+                      type="date"
+                      value={currentTripCfg.departDate || ""}
+                      onChange={(e) => {
+                        const nextTrip = {
+                          ...db.tripConfig,
+                          [route]: { ...db.tripConfig[route], departDate: e.target.value },
+                        };
+                        setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                        syncMetaToCloud(nextTrip, db.customers);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tarif Default / gram (IDR)</label>
+                    <input
+                      type="number"
+                      value={currentTripCfg.defaultRate ?? 180}
+                      onChange={(e) => {
+                        const nextTrip = {
+                          ...db.tripConfig,
+                          [route]: { ...db.tripConfig[route], defaultRate: Number(e.target.value || 0) },
+                        };
+                        setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                        syncMetaToCloud(nextTrip, db.customers);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                    />
+                  </div>
+                  {route === "indo-china" && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Kurs Yuan (1 CNY = ... IDR)</label>
+                      <input
+                        type="number"
+                        value={currentTripCfg.yuanRate ?? 2200}
+                        onChange={(e) => {
+                          const nextTrip = {
+                            ...db.tripConfig,
+                            [route]: { ...db.tripConfig[route], yuanRate: Number(e.target.value || 1) },
+                          };
+                          setDb((prev) => ({ ...prev, tripConfig: nextTrip }));
+                          syncMetaToCloud(nextTrip, db.customers);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {logModalSubId && modalTargetSub && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-lg w-full border-2 border-melon-200 space-y-4 max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-melon-100 pb-2">
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-melon-500">{t.activityTitle}</h3>
+                    <div className="text-xs text-gray-600">
+                      {modalTargetSub.customerName} • {modalTargetSub.id} • Resi: {modalTargetSub.resi || "-"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLogModalSubId(null)}
+                    className="px-3 py-1 rounded-xl bg-gray-100 text-xs font-bold cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {(modalTargetSub.activityLogs || []).map((lg) => (
+                    <div key={lg.id} className="p-3 rounded-2xl bg-melon-50/60 border border-melon-100 text-xs space-y-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-melon-500">[{lg.action}]</span>{" "}
+                          <strong>{lg.actor}</strong> <span className="text-gray-500">({lg.role})</span>
+                        </div>
+                        <span className="text-[11px] text-gray-400">{lg.timeLabel}</span>
+                      </div>
+                      <div className="text-gray-700">{lg.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {changeResiModal && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-2 border-melon-200 space-y-4">
+                <h3 className="font-display text-lg font-bold text-melon-500">{t.changeResi}</h3>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">{t.oldResi}</label>
+                  <div className="px-3 py-2 rounded-xl bg-gray-100 text-xs font-semibold">
+                    {db.submissions.find((s) => s.id === changeResiModal)?.resi || "(Kosong)"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t.newResi}</label>
+                  <input
+                    type="text"
+                    value={newResiInput}
+                    onChange={(e) => setNewResiInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChangeResiModal(null)}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-xs font-bold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmChangeResi}
+                    className="px-4 py-2 rounded-xl bg-melon-400 text-white text-xs font-bold"
+                  >
+                    {t.saveResi}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {returModal && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-2 border-melon-200 space-y-4">
+                <h3 className="font-display text-lg font-bold text-melon-500">{t.requestRetur}</h3>
+                <div className="flex gap-2">
+                  {["Retur CO Ulang", "Retur & Refund"].map((rt) => (
+                    <button
+                      key={rt}
+                      type="button"
+                      onClick={() => setReturType(rt)}
+                      className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold border ${
+                        returType === rt ? "bg-melon-400 text-white border-melon-400" : "bg-white border-melon-200"
+                      }`}
+                    >
+                      {rt}
+                    </button>
+                  ))}
+                </div>
+                {returType === "Retur CO Ulang" && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.returNewResi}</label>
+                    <input
+                      type="text"
+                      value={returNewResi}
+                      onChange={(e) => setReturNewResi(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t.returReason}</label>
+                  <textarea
+                    rows={2}
+                    value={returReason}
+                    onChange={(e) => setReturReason(e.target.value)}
+                    placeholder={returType === "Retur & Refund" ? "Keterangan tidak jadi..." : "Catatan retur..."}
+                    className="w-full px-3 py-2 rounded-xl border border-melon-200 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReturModal(null)}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-xs font-bold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmRetur}
+                    className="px-4 py-2 rounded-xl bg-melon-400 text-white text-xs font-bold"
+                  >
+                    {t.saveRetur}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showSyncModal && session.role === "admin" && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full border-2 border-melon-200 space-y-4">
+                <h3 className="font-display text-lg font-bold text-melon-500">☁️ Sync &amp; Backup</h3>
+                <div className="text-xs p-2.5 rounded-xl bg-melon-50 border border-melon-200">
+                  Status Firebase: <strong>{cloudStatus.toUpperCase()}</strong>
+                  {cloudErrorDetail && <div className="text-red-600 mt-1">{cloudErrorDetail}</div>}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={exportJsonBackup}
+                    className="flex-1 py-2 px-3 rounded-xl bg-rind-100 text-rind-500 text-xs font-bold cursor-pointer"
+                  >
+                    Download JSON
+                  </button>
+                  <label className="flex-1 py-2 px-3 rounded-xl bg-melon-100 text-melon-500 text-xs font-bold text-center cursor-pointer">
+                    Import JSON
+                    <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={pushLocalDataToCloud}
+                  className="w-full py-2 rounded-xl bg-rind-500 text-white text-xs font-bold cursor-pointer"
+                >
+                  ⬆️ Upload Data Lokal ke Firebase Sekarang
+                </button>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Override Firebase Config JSON (Opsional)</label>
+                  <textarea
+                    rows={4}
+                    value={fbConfigText}
+                    onChange={(e) => setFbConfigText(e.target.value)}
+                    placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
+                    className="w-full px-3 py-2 rounded-xl border border-melon-200 text-xs font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveFirebaseConfig}
+                    className="mt-2 w-full py-2 rounded-xl bg-melon-400 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Simpan Firebase Config
+                  </button>
+                </div>
+                {syncStatusMsg && <p className="text-xs font-semibold text-rind-500">{syncStatusMsg}</p>}
+                <button
+                  type="button"
+                  onClick={() => { setShowSyncModal(false); setSyncStatusMsg(""); }}
+                  className="w-full py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    class ErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { error };
+      }
+      render() {
+        if (this.state.error) {
+          return (
+            <div style={{ padding: 24, fontFamily: "sans-serif" }}>
+              <h2 style={{ color: "#e11d48" }}>Terjadi Error Saat Memuat Aplikasi</h2>
+              <pre style={{ whiteSpace: "pre-wrap", background: "#fff1f2", padding: 12, borderRadius: 8 }}>
+                {String(this.state.error?.message || this.state.error)}
+              </pre>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
+  </script>
+</body>
+</html>
